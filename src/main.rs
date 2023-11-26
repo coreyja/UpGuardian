@@ -1,4 +1,9 @@
-use axum::{extract::Query, response::IntoResponse, routing::get, Json, Router};
+use axum::{
+    extract::Query,
+    response::{IntoResponse, Redirect},
+    routing::get,
+    Json, Router,
+};
 use miette::{IntoDiagnostic, Result};
 use serde::Deserialize;
 use serde_json::Value;
@@ -24,6 +29,16 @@ async fn _main() -> Result<()> {
 
     let app = Router::new()
         .route("/", get(root))
+        .route(
+            "/login",
+            get(|| async move {
+                let idp_url = std::env::var("COREYJA_IDP_URL")
+                    .unwrap_or_else(|_| "http://localhost:3000".into());
+                let login_url = format!("{}/login/status", idp_url);
+
+                Redirect::temporary(&login_url)
+            }),
+        )
         .route("/login/callback", get(login_callback));
 
     // run it with hyper on localhost:3000
@@ -66,9 +81,7 @@ async fn login_callback(Query(query): Query<LoginCallback>) -> impl IntoResponse
         .into_diagnostic()
         .unwrap();
 
-    dbg!(&resp);
     let json = resp.json::<Value>().await.unwrap();
-    dbg!(&json);
 
     Json(json)
 }
