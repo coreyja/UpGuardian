@@ -1599,6 +1599,7 @@ dependencies = [
  "miette",
  "opentelemetry",
  "opentelemetry-otlp",
+ "reqwest",
  "sentry",
  "sentry-tower",
  "serde",

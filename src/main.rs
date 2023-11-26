@@ -1,5 +1,7 @@
-use axum::{response::IntoResponse, routing::get, Router};
+use axum::{extract::Query, response::IntoResponse, routing::get, Json, Router};
 use miette::{IntoDiagnostic, Result};
+use serde::Deserialize;
+use serde_json::Value;
 use setup::setup_sentry;
 
 mod setup;
@@ -20,7 +22,9 @@ async fn _main() -> Result<()> {
 
     tracing::info!("Hello, world!");
 
-    let app = Router::new().route("/", get(root));
+    let app = Router::new()
+        .route("/", get(root))
+        .route("/login/callback", get(login_callback));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3001".parse().into_diagnostic()?)
@@ -43,4 +47,28 @@ async fn root() -> impl IntoResponse {
             }
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct LoginCallback {
+    state: String,
+}
+
+async fn login_callback(Query(query): Query<LoginCallback>) -> impl IntoResponse {
+    let idp_url =
+        std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+    let client = reqwest::Client::new();
+
+    let resp = client
+        .post(format!("{}/login/claim/{}", idp_url, query.state))
+        .send()
+        .await
+        .into_diagnostic()
+        .unwrap();
+
+    dbg!(&resp);
+    let json = resp.json::<Value>().await.unwrap();
+    dbg!(&json);
+
+    Json(json)
 }
