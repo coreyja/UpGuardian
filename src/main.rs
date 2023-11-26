@@ -1,12 +1,15 @@
+use std::time::Duration;
+
 use axum::{
     extract::Query,
     response::{IntoResponse, Redirect},
     routing::get,
     Json, Router,
 };
+use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use miette::{IntoDiagnostic, Result};
-use serde::Deserialize;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use setup::setup_sentry;
 
 mod setup;
@@ -74,8 +77,26 @@ async fn login_callback(Query(query): Query<LoginCallback>) -> impl IntoResponse
         std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "http://localhost:3000".into());
     let client = reqwest::Client::new();
 
+    #[derive(Debug, Serialize, Deserialize)]
+    struct Claim {
+        sub: String,
+        exp: usize,
+    }
+
+    let key = std::env::var("AUTH_PRIVATE_KEY").unwrap();
+    let token = jsonwebtoken::encode(
+        &Header::new(Algorithm::RS256),
+        &Claim {
+            sub: query.state,
+            exp: (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize,
+        },
+        &EncodingKey::from_rsa_pem(key.as_bytes()).unwrap(),
+    )
+    .unwrap();
+
     let resp = client
-        .post(format!("{}/login/claim/{}", idp_url, query.state))
+        .post(format!("{}/login/status/claim", idp_url))
+        .json(&json!({ "jwt": token }))
         .send()
         .await
         .into_diagnostic()
