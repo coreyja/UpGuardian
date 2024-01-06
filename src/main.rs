@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use axum::{
     extract::Query,
     response::{IntoResponse, Redirect},
@@ -88,14 +86,16 @@ async fn login_callback(Query(query): Query<LoginCallback>) -> impl IntoResponse
         &Header::new(Algorithm::RS256),
         &Claim {
             sub: query.state,
-            exp: (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize,
+            exp: (chrono::Utc::now() + chrono::Duration::minutes(1)).timestamp() as usize,
         },
         &EncodingKey::from_rsa_pem(key.as_bytes()).unwrap(),
     )
     .unwrap();
 
+    let claim_url = format!("{}/login/status", idp_url);
+
     let resp = client
-        .post(format!("{}/login/status/claim", idp_url))
+        .post(claim_url)
         .json(&json!({ "jwt": token }))
         .send()
         .await
