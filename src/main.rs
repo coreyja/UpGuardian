@@ -1,16 +1,29 @@
+use std::time::Duration;
+
 use axum::{
     extract::Query,
     response::{IntoResponse, Redirect},
     routing::get,
     Json, Router,
 };
+use cja::{
+    cron::{CronRegistry, Worker},
+    jobs::{worker::job_worker, Job},
+};
+use jobs::hello::Hello;
 use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use miette::{IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use setup::setup_sentry;
+use tokio::task::JoinError;
+use tracing::info;
+
+use crate::jobs::Jobs;
 
 mod setup;
+
+mod jobs;
 
 fn main() -> Result<()> {
     let _sentry_guard = setup_sentry();
@@ -23,11 +36,7 @@ fn main() -> Result<()> {
         .block_on(async { _main().await })
 }
 
-async fn _main() -> Result<()> {
-    setup::setup_tracing()?;
-
-    tracing::info!("Hello, world!");
-
+async fn run_axum(_app_state: AppState) -> miette::Result<()> {
     let app = Router::new()
         .route("/", get(root))
         .route(
@@ -41,12 +50,69 @@ async fn _main() -> Result<()> {
             }),
         )
         .route("/login/callback", get(login_callback));
-
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3001".parse().into_diagnostic()?)
         .serve(app.into_make_service())
         .await
         .into_diagnostic()?;
+
+    Ok(())
+}
+
+async fn _main() -> Result<()> {
+    setup::setup_tracing()?;
+
+    tracing::info!("Hello, world!");
+
+    let app_state = AppState;
+
+    info!("Spawning Tasks");
+    let futures = vec![
+        tokio::spawn(run_axum(app_state.clone())),
+        tokio::spawn(job_worker(app_state.clone(), Jobs)),
+        tokio::spawn(run_cron(app_state.clone())),
+    ];
+    info!("Tasks Spawned");
+
+    let results = futures::future::join_all(futures).await;
+    let results: Result<Vec<Result<()>>, JoinError> = results.into_iter().collect();
+    results
+        .into_diagnostic()?
+        .into_iter()
+        .collect::<Result<Vec<()>>>()?;
+
+    info!("Main Returning");
+
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct AppState;
+
+impl cja::app_state::AppState for AppState {
+    fn version(&self) -> &str {
+        "dev"
+    }
+
+    fn db(&self) -> &cja::sqlx::PgPool {
+        todo!()
+    }
+}
+
+fn cron_registry() -> CronRegistry<AppState> {
+    let mut registry = CronRegistry::new();
+
+    registry.register(
+        "HelloWorld",
+        Duration::from_secs(60),
+        |app_state: AppState, context| Hello.enqueue(app_state.clone(), context),
+    );
+
+    registry
+}
+
+pub(crate) async fn run_cron(app_state: AppState) -> miette::Result<()> {
+    Worker::new(app_state, cron_registry()).run().await?;
 
     Ok(())
 }
