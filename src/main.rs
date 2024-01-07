@@ -7,6 +7,7 @@ use axum::{
     Json, Router,
 };
 use cja::{
+    app_state::AppState as _,
     cron::{CronRegistry, Worker},
     jobs::{worker::job_worker, Job},
 };
@@ -16,6 +17,7 @@ use miette::{IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use setup::setup_sentry;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::task::JoinError;
 use tracing::info;
 
@@ -34,6 +36,43 @@ fn main() -> Result<()> {
         .build()
         .into_diagnostic()?
         .block_on(async { _main().await })
+}
+
+#[tracing::instrument(err)]
+pub async fn setup_db_pool() -> Result<PgPool> {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .into_diagnostic()?;
+
+    const MIGRATION_LOCK_ID: i64 = 0xDB_DB_DB_DB_DB_DB_DB;
+    sqlx::query!("SELECT pg_advisory_lock($1)", MIGRATION_LOCK_ID)
+        .execute(&pool)
+        .await
+        .into_diagnostic()?;
+
+    sqlx::migrate!().run(&pool).await.into_diagnostic()?;
+
+    let unlock_result = sqlx::query!("SELECT pg_advisory_unlock($1)", MIGRATION_LOCK_ID)
+        .fetch_one(&pool)
+        .await
+        .into_diagnostic()?
+        .pg_advisory_unlock;
+
+    match unlock_result {
+        Some(b) => {
+            if b {
+                tracing::info!("Migration lock unlocked");
+            } else {
+                tracing::info!("Failed to unlock migration lock");
+            }
+        }
+        None => panic!("Failed to unlock migration lock"),
+    }
+
+    Ok(pool)
 }
 
 async fn run_axum(_app_state: AppState) -> miette::Result<()> {
@@ -64,7 +103,13 @@ async fn _main() -> Result<()> {
 
     tracing::info!("Hello, world!");
 
-    let app_state = AppState;
+    let pool = setup_db_pool().await?;
+    let app_state = AppState { pool };
+
+    cja::sqlx::migrate!()
+        .run(app_state.db())
+        .await
+        .into_diagnostic()?;
 
     info!("Spawning Tasks");
     let futures = vec![
@@ -87,7 +132,9 @@ async fn _main() -> Result<()> {
 }
 
 #[derive(Debug, Clone)]
-struct AppState;
+struct AppState {
+    pool: PgPool,
+}
 
 impl cja::app_state::AppState for AppState {
     fn version(&self) -> &str {
@@ -95,7 +142,7 @@ impl cja::app_state::AppState for AppState {
     }
 
     fn db(&self) -> &cja::sqlx::PgPool {
-        todo!()
+        &self.pool
     }
 }
 
