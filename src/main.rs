@@ -4,7 +4,7 @@ use axum::{
     extract::{Query, State},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Json, Router,
+    Router,
 };
 use cja::{
     app_state::AppState as _,
