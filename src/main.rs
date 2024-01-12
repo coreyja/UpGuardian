@@ -1,8 +1,8 @@
-use std::time::Duration;
+use std::{net::SocketAddr, time::Duration};
 
 use axum::{
-    extract::Query,
-    response::{IntoResponse, Redirect},
+    extract::{Query, State},
+    response::{IntoResponse, Redirect, Response},
     routing::get,
     Json, Router,
 };
@@ -10,15 +10,17 @@ use cja::{
     app_state::AppState as _,
     cron::{CronRegistry, Worker},
     jobs::{worker::job_worker, Job},
+    server::{cookies::CookieKey, session::DBSession},
+    tower_cookies::CookieManagerLayer,
 };
 use jobs::hello::Hello;
 use jsonwebtoken::{Algorithm, EncodingKey, Header};
-use miette::{IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use setup::setup_sentry;
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use tokio::task::JoinError;
+use tokio::{net::TcpListener, task::JoinError};
 use tracing::info;
 
 use crate::jobs::Jobs;
@@ -75,27 +77,35 @@ pub async fn setup_db_pool() -> Result<PgPool> {
     Ok(pool)
 }
 
-async fn run_axum(_app_state: AppState) -> miette::Result<()> {
+async fn run_axum(app_state: AppState) -> miette::Result<()> {
     let app = Router::new()
         .route("/", get(root))
-        .route(
-            "/login",
-            get(|| async move {
-                let idp_url = std::env::var("COREYJA_IDP_URL")
-                    .unwrap_or_else(|_| "http://localhost:3000".into());
-                let login_url = format!("{}/login/status", idp_url);
+        .route("/login", get(login))
+        .route("/login/callback", get(login_callback))
+        .with_state(app_state)
+        .layer(CookieManagerLayer::new());
 
-                Redirect::temporary(&login_url)
-            }),
-        )
-        .route("/login/callback", get(login_callback));
-    // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3001".parse().into_diagnostic()?)
-        .serve(app.into_make_service())
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
+    let listener = TcpListener::bind(&addr).await.unwrap();
+    tracing::debug!("listening on {}", addr);
+
+    axum::serve(listener, app)
         .await
-        .into_diagnostic()?;
+        .into_diagnostic()
+        .wrap_err("Failed to run server")?;
 
     Ok(())
+}
+
+async fn login(session: Option<DBSession>) -> Response {
+    if session.is_none() {
+        let idp_url =
+            std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+        let login_url = format!("{}/login/status", idp_url);
+        Redirect::temporary(&login_url).into_response()
+    } else {
+        Redirect::temporary("/").into_response()
+    }
 }
 
 async fn _main() -> Result<()> {
@@ -104,7 +114,10 @@ async fn _main() -> Result<()> {
     tracing::info!("Hello, world!");
 
     let pool = setup_db_pool().await?;
-    let app_state = AppState { pool };
+    let app_state = AppState {
+        pool,
+        cookie_key: CookieKey::from_env_or_generate().into_diagnostic()?,
+    };
 
     cja::sqlx::migrate!()
         .run(app_state.db())
@@ -134,6 +147,7 @@ async fn _main() -> Result<()> {
 #[derive(Debug, Clone)]
 struct AppState {
     pool: PgPool,
+    cookie_key: CookieKey,
 }
 
 impl cja::app_state::AppState for AppState {
@@ -143,6 +157,10 @@ impl cja::app_state::AppState for AppState {
 
     fn db(&self) -> &cja::sqlx::PgPool {
         &self.pool
+    }
+
+    fn cookie_key(&self) -> &CookieKey {
+        &self.cookie_key
     }
 }
 
@@ -183,7 +201,11 @@ struct LoginCallback {
     state: String,
 }
 
-async fn login_callback(Query(query): Query<LoginCallback>) -> impl IntoResponse {
+async fn login_callback(
+    cookies: tower_cookies::Cookies,
+    Query(query): Query<LoginCallback>,
+    State(app_state): State<AppState>,
+) -> impl IntoResponse {
     let idp_url =
         std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "http://localhost:3000".into());
     let client = reqwest::Client::new();
@@ -215,7 +237,24 @@ async fn login_callback(Query(query): Query<LoginCallback>) -> impl IntoResponse
         .into_diagnostic()
         .unwrap();
 
-    let json = resp.json::<Value>().await.unwrap();
+    #[derive(Debug, Serialize, Deserialize)]
+    struct ClaimResponse {
+        user_id: String,
+    }
+    let json = resp.json::<ClaimResponse>().await.unwrap();
 
-    Json(json)
+    let user = sqlx::query!(
+        "INSERT INTO Users (user_id, coreyja_user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING *",
+        uuid::Uuid::new_v4(),
+        uuid::Uuid::parse_str(&json.user_id).unwrap(),
+    )
+    .fetch_one(app_state.db())
+    .await
+    .unwrap();
+
+    DBSession::create(user.user_id, &app_state, &cookies)
+        .await
+        .unwrap();
+
+    Redirect::temporary("/").into_response()
 }

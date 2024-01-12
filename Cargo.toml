@@ -2,6 +2,7 @@
 name = "status"
 version = "0.1.0"
 edition = "2021"
+license = "private"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -33,11 +34,13 @@ sentry = { version = "0.31.5", default-features = false, features = [
 sentry-tower = { version = "0.31.5", features = ["http"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-maud = { version = "0.25.0", features = ["axum"] }
+maud = { version = "0.25.0", features = [
+  "axum",
+], git = "https://github.com/lambda-fairy/maud", rev = "320add87a12d8e5be115de9e0fe3f4b331512a4a" }
 
 async-trait = "0.1.60"
-axum = "0.6.2"
-axum-macros = "0.3.1"
+axum = "0.7.3"
+axum-macros = "0.4.0"
 
 reqwest = { version = "0.11.22", features = [
   "json",
@@ -49,3 +52,5 @@ chrono = "0.4.31"
 cja = { version = "0.0.0", git = "https://github.com/coreyja/coreyja.com", branch = "ca/main/extract-cja" }
 futures = "0.3.30"
 sqlx = "0.7.3"
+uuid = { version = "1.6.1", features = ["v4"] }
+tower-cookies = { version = "0.10.0", features = ["private", "signed"] }
