@@ -18,7 +18,7 @@ pub struct LoginCallback {
 pub async fn show(session: Option<DBSession>) -> axum::response::Response {
     if session.is_none() {
         let idp_url =
-            std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+            std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "https://coreyja.com".into());
         let login_url = format!("{}/login/status", idp_url);
         Redirect::temporary(&login_url).into_response()
     } else {
@@ -31,8 +31,7 @@ pub async fn callback(
     Query(query): Query<LoginCallback>,
     State(app_state): State<AppState>,
 ) -> impl IntoResponse {
-    let idp_url =
-        std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "http://localhost:3000".into());
+    let idp_url = std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "https://coreyja.com".into());
     let client = reqwest::Client::new();
 
     #[derive(Debug, Serialize, Deserialize)]
