@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use cja::{cron::{CronRegistry, Worker}, jobs::Job as _};
+use cja::{
+    cron::{CronRegistry, Worker},
+    jobs::Job as _,
+};
 
 use crate::{app_state::AppState, jobs::hello::Hello};
 

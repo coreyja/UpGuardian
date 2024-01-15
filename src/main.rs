@@ -1,10 +1,6 @@
 use std::net::SocketAddr;
 
-use cja::{
-    app_state::AppState as _,
-    jobs::worker::job_worker,
-    tower_cookies::CookieManagerLayer,
-};
+use cja::{app_state::AppState as _, jobs::worker::job_worker, tower_cookies::CookieManagerLayer};
 use miette::{Context, IntoDiagnostic, Result};
 use setup::setup_sentry;
 use tokio::{net::TcpListener, task::JoinError};
