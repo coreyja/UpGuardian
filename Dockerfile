@@ -20,7 +20,7 @@ COPY . .
 # COPY tailwind.config.js .
 # RUN ./tailwindcss -i server/src/styles/tailwind.css -o target/tailwind.css
 
-RUN cargo build --release --locked --bin server
+RUN cargo build --release --locked --bin status
 
 # Start building the final image
 FROM debian:stable-slim as final
@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/* \
   && update-ca-certificates
 
-COPY --from=builder /app/target/release/server .
+COPY --from=builder /app/target/release/status .
 
 EXPOSE 3001
 
-ENTRYPOINT ["./server"]
+ENTRYPOINT ["./status"]
