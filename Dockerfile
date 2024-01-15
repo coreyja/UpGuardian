@@ -33,6 +33,6 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder /app/target/release/server .
 
-EXPOSE 3000
+EXPOSE 3001
 
 ENTRYPOINT ["./server"]
