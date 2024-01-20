@@ -49,7 +49,7 @@ reqwest = { version = "0.11.22", features = [
 jsonwebtoken = "9.1.0"
 chrono = "0.4.31"
 
-cja = { version = "0.0.0", git = "https://github.com/coreyja/coreyja.com", branch = "ca/main/extract-cja" }
+cja = { version = "0.0.0", git = "https://github.com/coreyja/coreyja.com", branch = "main" }
 futures = "0.3.30"
 sqlx = "0.7.3"
 uuid = { version = "1.6.1", features = ["v4"] }
