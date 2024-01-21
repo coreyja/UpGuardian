@@ -91,9 +91,36 @@ pub async fn show(
     .await
     .unwrap();
 
+    let checkins = sqlx::query!(
+        r#"
+      SELECT *
+      FROM Checkins
+      WHERE page_id = $1
+      ORDER BY created_at DESC
+      LIMIT 10
+    "#,
+        page_id
+    )
+    .fetch_all(state.db())
+    .await
+    .unwrap();
+
     html! {
       h1 { (page.name) }
 
       p { (page.path) }
+
+      h2 { "Checkins" }
+
+      ul {
+        @for checkin in checkins {
+          li {
+            (checkin.created_at) " - " (checkin.outcome)
+            @if let Some(status) = checkin.status_code {
+              " - " (status)
+            }
+          }
+        }
+      }
     }
 }
