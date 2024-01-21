@@ -7,6 +7,7 @@ use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tower_cookies::Cookie;
 
 use crate::app_state::AppState;
 
@@ -83,4 +84,14 @@ pub async fn callback(
         .unwrap();
 
     Redirect::temporary("/").into_response()
+}
+
+pub async fn logout(
+    cookies: tower_cookies::Cookies,
+    State(app_state): State<AppState>,
+) -> impl IntoResponse {
+    let private = cookies.private(app_state.cookie_key());
+    private.remove(Cookie::new("session_id", ""));
+
+    Redirect::to("/").into_response()
 }

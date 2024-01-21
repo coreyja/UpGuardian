@@ -1,4 +1,4 @@
-use axum::{routing::get, Router};
+use axum::{routing::{get, post}, Router};
 
 use crate::app_state::AppState;
 
@@ -10,4 +10,5 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(home::show))
         .route("/login", get(login::show))
         .route("/login/callback", get(login::callback))
+        .route("/logout", post(login::logout))
 }
