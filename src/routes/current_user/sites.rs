@@ -1,10 +1,10 @@
 use axum::{
     extract::{FromRequestParts, Path, State},
-    http::{request::Parts, StatusCode},
+    http::{request::Parts},
     response::{IntoResponse, Redirect},
     Form,
 };
-use axum_macros::debug_handler;
+
 use cja::{
     app_state::AppState as _,
     server::session::{DBSession, SessionRedirect},

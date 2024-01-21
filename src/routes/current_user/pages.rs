@@ -1,9 +1,9 @@
 use axum::{
-    extract::{FromRequestParts, Path, State},
+    extract::{Path, State},
     response::{IntoResponse, Redirect},
     Form,
 };
-use cja::{app_state::AppState as _, server::session::DBSession};
+use cja::{app_state::AppState as _};
 use maud::html;
 use uuid::Uuid;
 
