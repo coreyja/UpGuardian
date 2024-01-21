@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO Users (user_id, coreyja_user_id, is_active_sponsor) VALUES ($1, $2, $3) ON CONFLICT (coreyja_user_id) DO UPDATE SET is_active_sponsor = excluded.is_active_sponsor RETURNING *",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "coreyja_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_active_sponsor",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fc2c0010c738e7243272d6fe82dff58b8e3b9818fc2038a984946c285d880523"
+}
