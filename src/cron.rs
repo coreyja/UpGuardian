@@ -5,7 +5,10 @@ use cja::{
     jobs::Job as _,
 };
 
-use crate::{app_state::AppState, jobs::hello::Hello};
+use crate::{
+    app_state::AppState,
+    jobs::{create_checkin::BulkEnqueueCheckins, hello::Hello},
+};
 
 fn cron_registry() -> CronRegistry<AppState> {
     let mut registry = CronRegistry::new();
@@ -14,6 +17,12 @@ fn cron_registry() -> CronRegistry<AppState> {
         "HelloWorld",
         Duration::from_secs(60),
         |app_state: AppState, context| Hello.enqueue(app_state.clone(), context),
+    );
+
+    registry.register(
+        "BulkEnqueueCheckins",
+        Duration::from_secs(60),
+        |app_state: AppState, context| BulkEnqueueCheckins.enqueue(app_state.clone(), context),
     );
 
     registry
