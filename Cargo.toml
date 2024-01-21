@@ -39,7 +39,7 @@ maud = { version = "0.25.0", features = [
 ], git = "https://github.com/lambda-fairy/maud", rev = "320add87a12d8e5be115de9e0fe3f4b331512a4a" }
 
 async-trait = "0.1.60"
-axum = "0.7.3"
+axum = "0.7.4"
 axum-macros = "0.4.0"
 
 reqwest = { version = "0.11.22", features = [

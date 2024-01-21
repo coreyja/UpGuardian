@@ -64,13 +64,15 @@ pub async fn callback(
     #[derive(Debug, Serialize, Deserialize)]
     struct ClaimResponse {
         user_id: String,
+        is_active_sponsor: bool,
     }
     let json = resp.json::<ClaimResponse>().await.unwrap();
 
     let user = sqlx::query!(
-        "INSERT INTO Users (user_id, coreyja_user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING *",
+        "INSERT INTO Users (user_id, coreyja_user_id, is_active_sponsor) VALUES ($1, $2, $3) ON CONFLICT (coreyja_user_id) DO UPDATE SET is_active_sponsor = excluded.is_active_sponsor RETURNING *",
         uuid::Uuid::new_v4(),
         uuid::Uuid::parse_str(&json.user_id).unwrap(),
+        json.is_active_sponsor
     )
     .fetch_one(app_state.db())
     .await
