@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    SELECT site_id, name, domain, description\n    FROM Sites\n    WHERE user_id = $1\n  ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "site_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "domain",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "48cc3ac9b03a48c5196b265c087b0a482515d2991c224fe4390b3278c85f126b"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    INSERT INTO Pages (site_id, path, name)\n    VALUES ($1, $2, $3)\n  ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a59517a6694c9fc5f5ca0e73167d736d339c9b3b8bb355ebacb1f60b2cdb657b"
+}

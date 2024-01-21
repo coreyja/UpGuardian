@@ -4,6 +4,7 @@ use crate::AppState;
 
 pub(crate) struct Jobs;
 
+pub(crate) mod create_checkin;
 pub(crate) mod hello;
 
 #[async_trait::async_trait]
@@ -13,6 +14,12 @@ impl JobRegistry<AppState> for Jobs {
 
         match job.name.as_str() {
             "Hello" => hello::Hello::run_from_value(payload, app_state).await,
+            "CreateCheckin" => {
+                create_checkin::CreateCheckin::run_from_value(payload, app_state).await
+            }
+            "BulkEnqueueCheckins" => {
+                create_checkin::BulkEnqueueCheckins::run_from_value(payload, app_state).await
+            }
             _ => Err(miette::miette!("Unknown job type: {}", job.name)),
         }
     }

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    SELECT *\n    FROM Pages\n    WHERE page_id = $1 AND site_id = $2\n  ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "page_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "site_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "path",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8f8885468259004d1a1bb8ff93a103fbd50672c784f8d5431bf6cab217a44293"
+}

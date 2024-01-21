@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT page_id\n        FROM Pages\n      ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "page_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "02d3e87e4678c1327f3af0348bf1f5a143de163ede8a941ed9be8bd240f3c7df"
+}

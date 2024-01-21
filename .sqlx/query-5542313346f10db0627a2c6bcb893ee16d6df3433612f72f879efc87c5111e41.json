@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT Pages.path, Sites.domain\n        FROM Pages\n        JOIN Sites ON Sites.site_id = Pages.site_id\n        WHERE page_id = $1\n      ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "domain",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "5542313346f10db0627a2c6bcb893ee16d6df3433612f72f879efc87c5111e41"
+}
