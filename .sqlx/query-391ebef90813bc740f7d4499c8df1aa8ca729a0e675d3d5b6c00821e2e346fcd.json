@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n      SELECT site_id, name, domain, description\n      FROM Sites\n      WHERE site_id = $1 AND user_id = $2\n    ",
+  "query": "\n          SELECT *\n          FROM Sites\n          WHERE site_id = $1 AND user_id = $2\n        ",
   "describe": {
     "columns": [
       {
@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "description",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -34,8 +39,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "a0c4c3f2d3ad72d45ae3f4529f6e74ca3f1d5cfa557fe9efe19c47d4481a76fa"
+  "hash": "391ebef90813bc740f7d4499c8df1aa8ca729a0e675d3d5b6c00821e2e346fcd"
 }
