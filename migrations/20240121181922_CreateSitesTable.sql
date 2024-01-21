@@ -4,7 +4,7 @@
 -- domain is unique to the owner
 CREATE TABLE
   Sites (
-    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
+    site_id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
     name TEXT NOT NULL,
     domain TEXT NOT NULL,
     description TEXT,

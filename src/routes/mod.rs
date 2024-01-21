@@ -20,4 +20,5 @@ pub fn routes() -> Router<AppState> {
             get(current_user::sites::index).post(current_user::sites::create),
         )
         .route("/my/sites/new", get(current_user::sites::new))
+        .route("/my/sites/:site_id", get(current_user::sites::show))
 }
