@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n      INSERT INTO Sites (name, domain, description, user_id)\n      VALUES ($1, $2, $3, $4)\n      RETURNING id\n    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "05407e1b245b9cbca43bd267fb9098bd970b860883dfc7efa3f70f5964c67941"
+}

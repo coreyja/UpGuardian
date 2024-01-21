@@ -18,6 +18,8 @@ pub async fn show(session: Option<DBSession>) -> impl IntoResponse {
                     form method="POST" action="/logout" {
                         button type="submit" { "Logout" }
                     }
+
+                    a href="/my/sites" { "My Sites" }
                 } @else {
                     h1 { "Hello, world!" }
 
