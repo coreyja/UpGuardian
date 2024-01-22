@@ -13,17 +13,8 @@ use crate::{
 fn cron_registry() -> CronRegistry<AppState> {
     let mut registry = CronRegistry::new();
 
-    registry.register(
-        "HelloWorld",
-        Duration::from_secs(60),
-        |app_state: AppState, context| Hello.enqueue(app_state.clone(), context),
-    );
-
-    registry.register(
-        "BulkEnqueueCheckins",
-        Duration::from_secs(60),
-        |app_state: AppState, context| BulkEnqueueCheckins.enqueue(app_state.clone(), context),
-    );
+    registry.register_job(Hello, Duration::from_secs(60));
+    registry.register_job(BulkEnqueueCheckins, Duration::from_secs(60));
 
     registry
 }
