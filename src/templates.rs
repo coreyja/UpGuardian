@@ -9,6 +9,7 @@ pub struct Template {
     pub content: Markup,
     sites: Vec<SidebarSiteLink>,
     session: Option<DBSession>,
+    state: AppState,
 }
 
 impl IntoResponse for Template {
@@ -18,6 +19,7 @@ impl IntoResponse for Template {
                 html class="h-full bg-white" {
                   head {
                     link rel="stylesheet" href="/styles/tailwind.css" {}
+                    link rel="stylesheet" href=(format!("https://kit.fontawesome.com/{}.css", self.state.font_awesome_kit_id)) crossorigin="anonymous" {}
 
                     title { "Status - Uptime Monitoring by coreyja" }
                   }
@@ -159,11 +161,13 @@ impl IntoResponse for Template {
                                                 text: "Dashboard".to_string(),
                                                 href: "/".to_string(),
                                                 selected: false,
+                                                icon: "fa-solid fa-house".to_string(),
                                               },
                                               SideBarLink {
                                                 text: "Sites".to_string(),
                                                 href: "/my/sites".to_string(),
                                                 selected: false,
+                                                icon: "fa-solid fa-globe".to_string(),
                                               },
                                             ]
                                           })
@@ -260,6 +264,7 @@ struct SideBarLink {
     text: String,
     href: String,
     selected: bool,
+    icon: String,
 }
 
 impl SideBarLink {
@@ -279,11 +284,12 @@ impl SideBarLink {
 impl Render for SideBarLink {
     fn render(&self) -> Markup {
         html! {
-          a.(self.conditional_selected_styles())." group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold" href=(self.href) {
-            svg."h-6 w-6 shrink-0 text-white" stroke="currentColor" aria-hidden="true" fill="none" stroke-width="1.5" viewBox="0 0 24 24" {
-                path stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" stroke-linecap="round" {}
+          a class=(format!("{} group rounded-md p-2 block flex gap-x-3", self.conditional_selected_styles())) href=(self.href) {
+            i class=(format!("self-center shrink-0 text-white fa-fw {}", self.icon)) aria-hidden="true" {}
+
+            span class="text-sm leading-6 font-semibold" {
+                (self.text)
             }
-            (self.text)
           }
         }
     }
@@ -376,6 +382,7 @@ impl IntoTemplate for Markup {
             content: self,
             sites,
             session,
+            state: app_state,
         })
     }
 }

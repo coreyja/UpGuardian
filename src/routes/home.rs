@@ -1,5 +1,5 @@
 use axum::extract::State;
-use cja::{app_state, server::session::DBSession};
+use cja::server::session::DBSession;
 
 use crate::{
     app_state::AppState,
