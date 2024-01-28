@@ -15,6 +15,8 @@ mod cron;
 mod jobs;
 mod routes;
 
+mod templates;
+
 use app_state::AppState;
 
 fn main() -> Result<()> {

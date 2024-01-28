@@ -1,7 +1,8 @@
-use axum::response::IntoResponse;
 use cja::server::session::DBSession;
 
-pub async fn show(session: Option<DBSession>) -> impl IntoResponse {
+use crate::templates::{IntoTemplate, Template};
+
+pub async fn show(session: Option<DBSession>) -> Template {
     maud::html! {
         html {
             head {
@@ -34,4 +35,5 @@ pub async fn show(session: Option<DBSession>) -> impl IntoResponse {
             }
         }
     }
+    .into_template()
 }

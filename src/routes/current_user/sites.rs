@@ -1,6 +1,6 @@
 use axum::{
     extract::{FromRequestParts, Path, State},
-    http::{request::Parts},
+    http::request::Parts,
     response::{IntoResponse, Redirect},
     Form,
 };
@@ -13,8 +13,8 @@ use maud::html;
 use serde::Deserialize as _;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
-use crate::routes::current_user::pages::Page;
+use crate::{app_state::AppState, templates::IntoTemplate};
+use crate::{routes::current_user::pages::Page, templates::Template};
 
 pub async fn index(session: DBSession, State(state): State<AppState>) -> impl IntoResponse {
     let sites = sqlx::query!(
@@ -30,7 +30,7 @@ pub async fn index(session: DBSession, State(state): State<AppState>) -> impl In
     .unwrap();
 
     html! {
-      h1 { "My Sites" }
+      h1 class="text-red-500" { "My Sites" }
 
       a href="/my/sites/new" { "Create a new site" }
 
@@ -44,6 +44,7 @@ pub async fn index(session: DBSession, State(state): State<AppState>) -> impl In
         }
       }
     }
+    .into_template()
 }
 
 pub async fn new(_session: DBSession) -> impl IntoResponse {
@@ -69,6 +70,7 @@ pub async fn new(_session: DBSession) -> impl IntoResponse {
         input type="submit" value="Create";
       }
     }
+    .into_template()
 }
 
 #[derive(serde::Deserialize)]
@@ -166,7 +168,7 @@ impl FromRequestParts<AppState> for Site {
     }
 }
 
-pub async fn show(site: Site, State(state): State<AppState>) -> axum::response::Response {
+pub async fn show(site: Site, State(state): State<AppState>) -> Template {
     let pages = sqlx::query_as!(
         Page,
         r#"
@@ -203,5 +205,5 @@ pub async fn show(site: Site, State(state): State<AppState>) -> axum::response::
         }
       }
     }
-    .into_response()
+    .into_template()
 }

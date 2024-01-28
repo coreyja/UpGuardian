@@ -1308,8 +1308,6 @@ name = "maud"
 version = "0.25.0"
 source = "git+https://github.com/lambda-fairy/maud?rev=320add87a12d8e5be115de9e0fe3f4b331512a4a#320add87a12d8e5be115de9e0fe3f4b331512a4a"
 dependencies = [
- "axum-core 0.4.3",
- "http 1.0.0",
  "itoa",
  "maud_macros",
 ]

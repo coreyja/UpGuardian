@@ -3,11 +3,11 @@ use axum::{
     response::{IntoResponse, Redirect},
     Form,
 };
-use cja::{app_state::AppState as _};
+use cja::app_state::AppState as _;
 use maud::html;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
+use crate::{app_state::AppState, templates::IntoTemplate};
 
 use super::sites::Site;
 
@@ -29,6 +29,7 @@ pub async fn new(site: Site) -> impl IntoResponse {
         button type="submit" { "Create" }
       }
     }
+    .into_template()
 }
 
 #[derive(serde::Deserialize)]
@@ -123,4 +124,5 @@ pub async fn show(
         }
       }
     }
+    .into_template()
 }
