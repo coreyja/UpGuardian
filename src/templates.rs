@@ -40,7 +40,7 @@ impl IntoResponse for Template {
                                   }
                                   div."flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6 pb-2" {
                                       div."flex h-16 shrink-0 items-center" {
-                                          img."h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=white" alt="Your Company" {}
+                                          img."h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=white" alt="Status by Coreyja" {}
                                       }
                                       nav."flex flex-1 flex-col" {
                                           ul."flex flex-1 flex-col gap-y-7" role="list" {
