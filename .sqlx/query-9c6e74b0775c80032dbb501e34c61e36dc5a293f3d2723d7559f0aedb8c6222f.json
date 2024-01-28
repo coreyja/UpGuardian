@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n      SELECT *\n      FROM Pages\n      WHERE site_id = $1\n    ",
+  "query": "\n      SELECT Pages.*\n      FROM Pages\n      JOIN Sites ON Sites.site_id = Pages.site_id\n      WHERE Pages.site_id = $1 AND Sites.user_id = $2\n    ",
   "describe": {
     "columns": [
       {
@@ -26,6 +26,7 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid"
       ]
     },
@@ -36,5 +37,5 @@
       false
     ]
   },
-  "hash": "f7bbafce01a64cd7a1a5412f54cc1e2d200c53efa05d571b0b7eff5010cd4bc6"
+  "hash": "9c6e74b0775c80032dbb501e34c61e36dc5a293f3d2723d7559f0aedb8c6222f"
 }
