@@ -8,17 +8,17 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS builder 
 RUN rustc --version; cargo --version; rustup --version
 
-# RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 && \
-#   chmod +x tailwindcss-linux-x64 && \
-#   mv tailwindcss-linux-x64 tailwindcss
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 && \
+  chmod +x tailwindcss-linux-x64 && \
+  mv tailwindcss-linux-x64 tailwindcss
 
 COPY --from=planner /app/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
-# COPY tailwind.config.js .
-# RUN ./tailwindcss -i server/src/styles/tailwind.css -o target/tailwind.css
+COPY tailwind.config.js .
+RUN ./tailwindcss -i src/tailwind.css -o target/tailwind.css
 
 RUN cargo build --release --locked --bin status
 
