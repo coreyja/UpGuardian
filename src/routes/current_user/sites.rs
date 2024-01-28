@@ -30,7 +30,7 @@ pub async fn index(session: DBSession, State(state): State<AppState>) -> impl In
     .unwrap();
 
     html! {
-      h1 class="text-red-500" { "My Sites" }
+      h1 { "My Sites" }
 
       a href="/my/sites/new" { "Create a new site" }
 
@@ -44,10 +44,12 @@ pub async fn index(session: DBSession, State(state): State<AppState>) -> impl In
         }
       }
     }
-    .into_template()
+    .into_template(state, Some(session))
+    .await
+    .unwrap()
 }
 
-pub async fn new(_session: DBSession) -> impl IntoResponse {
+pub async fn new(session: DBSession, State(state): State<AppState>) -> impl IntoResponse {
     html! {
       h1 { "New Site" }
 
@@ -70,7 +72,9 @@ pub async fn new(_session: DBSession) -> impl IntoResponse {
         input type="submit" value="Create";
       }
     }
-    .into_template()
+    .into_template(state, Some(session))
+    .await
+    .unwrap()
 }
 
 #[derive(serde::Deserialize)]
@@ -168,15 +172,17 @@ impl FromRequestParts<AppState> for Site {
     }
 }
 
-pub async fn show(site: Site, State(state): State<AppState>) -> Template {
+pub async fn show(site: Site, State(state): State<AppState>, session: DBSession) -> Template {
     let pages = sqlx::query_as!(
         Page,
         r#"
-      SELECT *
+      SELECT Pages.*
       FROM Pages
-      WHERE site_id = $1
+      JOIN Sites ON Sites.site_id = Pages.site_id
+      WHERE Pages.site_id = $1 AND Sites.user_id = $2
     "#,
         site.site_id,
+        session.user_id
     )
     .fetch_all(state.db())
     .await
@@ -205,5 +211,7 @@ pub async fn show(site: Site, State(state): State<AppState>) -> Template {
         }
       }
     }
-    .into_template()
+    .into_template(state, Some(session))
+    .await
+    .unwrap()
 }

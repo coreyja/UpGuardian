@@ -1,8 +1,12 @@
-use cja::server::session::DBSession;
+use axum::extract::State;
+use cja::{app_state, server::session::DBSession};
 
-use crate::templates::{IntoTemplate, Template};
+use crate::{
+    app_state::AppState,
+    templates::{IntoTemplate, Template},
+};
 
-pub async fn show(session: Option<DBSession>) -> Template {
+pub async fn show(session: Option<DBSession>, State(state): State<AppState>) -> Template {
     maud::html! {
         html {
             head {
@@ -13,7 +17,7 @@ pub async fn show(session: Option<DBSession>) -> Template {
             }
 
             body {
-                @if let Some(session) = session {
+                @if let Some(session) = session.clone() {
                     h1 { "Hello, " (session.user_id) "!" }
                     h3 { "Session Id: " (session.session_id) }
 
@@ -35,5 +39,7 @@ pub async fn show(session: Option<DBSession>) -> Template {
             }
         }
     }
-    .into_template()
+    .into_template(state, session)
+    .await
+    .unwrap()
 }

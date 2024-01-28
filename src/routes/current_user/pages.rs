@@ -3,7 +3,7 @@ use axum::{
     response::{IntoResponse, Redirect},
     Form,
 };
-use cja::app_state::AppState as _;
+use cja::{app_state::AppState as _, server::session::DBSession};
 use maud::html;
 use uuid::Uuid;
 
@@ -11,7 +11,11 @@ use crate::{app_state::AppState, templates::IntoTemplate};
 
 use super::sites::Site;
 
-pub async fn new(site: Site) -> impl IntoResponse {
+pub async fn new(
+    site: Site,
+    session: DBSession,
+    State(app_state): State<AppState>,
+) -> impl IntoResponse {
     html! {
       h1 { "New Page" }
 
@@ -29,7 +33,9 @@ pub async fn new(site: Site) -> impl IntoResponse {
         button type="submit" { "Create" }
       }
     }
-    .into_template()
+    .into_template(app_state, Some(session))
+    .await
+    .unwrap()
 }
 
 #[derive(serde::Deserialize)]
@@ -77,16 +83,19 @@ pub async fn show(
     site: Site,
     State(state): State<AppState>,
     Path(PagePath { page_id }): Path<PagePath>,
+    session: DBSession,
 ) -> impl IntoResponse {
     let page = sqlx::query_as!(
         Page,
         r#"
-    SELECT *
+    SELECT Pages.*
     FROM Pages
-    WHERE page_id = $1 AND site_id = $2
+    JOIN Sites ON Sites.site_id = Pages.site_id
+    WHERE Pages.page_id = $1 AND Pages.site_id = $2 AND Sites.user_id = $3
   "#,
         page_id,
-        site.site_id
+        site.site_id,
+        session.user_id
     )
     .fetch_one(state.db())
     .await
@@ -124,5 +133,7 @@ pub async fn show(
         }
       }
     }
-    .into_template()
+    .into_template(state, Some(session))
+    .await
+    .unwrap()
 }
