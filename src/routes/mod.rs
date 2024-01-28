@@ -12,6 +12,7 @@ mod login;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(home::show))
+        .route("/styles/tailwind.css", get(tailwind_css))
         .route("/login", get(login::show))
         .route("/login/callback", get(login::callback))
         .route("/logout", post(login::logout))
@@ -33,4 +34,8 @@ pub fn routes() -> Router<AppState> {
             "/my/sites/:site_id/pages/:page_id",
             get(current_user::pages::show),
         )
+}
+
+async fn tailwind_css() -> &'static str {
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/target/tailwind.css"))
 }

@@ -6,6 +6,7 @@ pub async fn show(session: Option<DBSession>) -> impl IntoResponse {
         html {
             head {
                 script src="https://unpkg.com/htmx.org@1.9.10" {}
+                link rel="stylesheet" href="/styles/tailwind.css" {}
 
                 title { "Status - Uptime Monitoring by coreyja" }
             }
