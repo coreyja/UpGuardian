@@ -1,37 +1,53 @@
-use crate::error_template::{AppError, ErrorTemplate};
+use crate::{app::sidebar::SidebarLayout, error_template::{AppError, ErrorTemplate}};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
+
+mod sidebar;
+
+#[derive(Clone )]
+struct GlobalClientState {
+    font_awesome_kit_id: String,
+}
+
+impl GlobalClientState {
+    fn new() -> Self {
+        Self {
+            font_awesome_kit_id: std::env::var("FONT_AWESOME_KIT_ID").unwrap(),
+        }
+    }
+}
 
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
+    provide_context(GlobalClientState::new());
+    let state = expect_context::<GlobalClientState>();
+
     view! {
-
-
-        // injects a stylesheet into the document <head>
-        // id=leptos means cargo-leptos will hot-reload this stylesheet
         <Stylesheet id="leptos" href="/pkg/status-leptos.css"/>
 
+        <Stylesheet
+            id="font-awesome"
+            href=format!("https://kit.fontawesome.com/{}.css", state.font_awesome_kit_id)
+        />
+
         // sets the document title
-        <Title text="Welcome to Leptos"/>
+        <Title text="Status - Uptime Monitoring by coreyja"/>
 
         // content for this welcome page
         <Router fallback=|| {
             let mut outside_errors = Errors::default();
             outside_errors.insert_with_default_key(AppError::NotFound);
-            view! {
-                <ErrorTemplate outside_errors/>
-            }
-            .into_view()
+            view! { <ErrorTemplate outside_errors/> }.into_view()
         }>
-            <main class="bg-blue-500">
+            <SidebarLayout>
                 <Routes>
-                    <Route path="" view=HomePage ssr=SsrMode::Async />
+                    <Route path="" view=HomePage ssr=SsrMode::Async/>
                 </Routes>
-            </main>
+            </SidebarLayout>
         </Router>
     }
 }

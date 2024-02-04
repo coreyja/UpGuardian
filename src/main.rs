@@ -44,6 +44,7 @@ fn main() -> miette::Result<()> {
         let routes = generate_route_list(App);
 
         // build our application with a route
+        // TODO: Integrate this with my old routing from Axum
         let app = Router::new()
             .leptos_routes(&leptos_options, routes, App)
             .fallback(file_and_error_handler)
