@@ -98,10 +98,10 @@ const config: PlaywrightTestConfig = {
   // outputDir: 'test-results/',
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   port: 3000,
-  // },
+  webServer: {
+    command: "cd .. && LEPTOS_SITE_ADDR='127.0.0.1:3021' cargo leptos serve",
+    port: 3021,
+  },
 };
 
 export default config;

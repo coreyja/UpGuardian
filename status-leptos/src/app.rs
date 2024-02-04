@@ -29,7 +29,7 @@ pub fn App() -> impl IntoView {
         }>
             <main class="bg-red-500">
                 <Routes>
-                    <Route path="" view=HomePage/>
+                    <Route path="" view=HomePage ssr=SsrMode::Async />
                 </Routes>
             </main>
         </Router>
