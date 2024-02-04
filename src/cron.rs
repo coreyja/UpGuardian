@@ -16,7 +16,7 @@ fn cron_registry() -> CronRegistry<AppState> {
     registry
 }
 
-pub(crate) async fn run_cron(app_state: AppState) -> miette::Result<()> {
+pub async fn run_cron(app_state: AppState) -> miette::Result<()> {
     Worker::new(app_state, cron_registry()).run().await?;
 
     Ok(())

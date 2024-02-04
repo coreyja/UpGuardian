@@ -1,2 +1,0 @@
-server:     cargo leptos watch
-tailwind:   tailwindcss -i ./src/tailwind.css -o ./style/tailwind.css --watch
