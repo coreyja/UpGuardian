@@ -1,11 +1,8 @@
 use leptos::*;
-use leptos_meta::*;
+
 use leptos_query::{QueryResult, RefetchFn};
-use leptos_router::*;
+
 use serde::{Deserialize, Serialize};
-
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SidebarSite {
@@ -16,9 +13,8 @@ pub struct SidebarSite {
 
 #[server]
 pub async fn get_my_sites(_args: ()) -> Result<Vec<SidebarSite>, ServerFnError> {
-    use cja::{app_state::AppState as _, server::session::DBSession};
-    use crate::app_state::AppState;
     use crate::extractors::*;
+    use cja::app_state::AppState as _;
 
     let session = extract_session()?;
     let state = extract_state()?;
@@ -59,26 +55,24 @@ pub struct CurrentUser {
 }
 
 #[server]
-pub async fn get_current_user(args: ()) -> Result<Option<CurrentUser>, ServerFnError> {
+pub async fn get_current_user(_args: ()) -> Result<Option<CurrentUser>, ServerFnError> {
     use crate::extractors::*;
 
     let session = extract_session()?;
 
     match session {
-        Some(session) => {
-            Ok(Some(CurrentUser {
-                user_id: session.user_id.to_string(),
-                session_id: session.session_id.to_string(),
-            }))
-        }
+        Some(session) => Ok(Some(CurrentUser {
+            user_id: session.user_id.to_string(),
+            session_id: session.session_id.to_string(),
+        })),
         None => Ok(None),
     }
 }
 
-pub fn use_current_user() -> QueryResult<Result<Option<CurrentUser>, ServerFnError>, impl RefetchFn> {
+pub fn use_current_user() -> QueryResult<Result<Option<CurrentUser>, ServerFnError>, impl RefetchFn>
+{
     leptos_query::use_query(|| (), get_current_user, Default::default())
 }
-
 
 #[component]
 pub fn SidebarSiteList(sites: Signal<Vec<SidebarSite>>) -> impl IntoView {
@@ -237,8 +231,7 @@ pub fn SidebarLink(title: String, href: String, icon_class: String) -> impl Into
 #[component]
 pub fn ProfileFooter() -> impl IntoView {
     let QueryResult {
-        data: current_user,
-        ..
+        data: current_user, ..
     } = use_current_user();
 
     view! {
@@ -284,14 +277,14 @@ pub fn SidebarLinks() -> impl IntoView {
 
 #[component]
 pub fn SidebarLayout(children: Children) -> impl IntoView {
-    let QueryResult {
-        data: sites,
-        ..
-    } = leptos_query::use_query(|| (), get_my_sites, Default::default());
+    let QueryResult { data: sites, .. } =
+        leptos_query::use_query(|| (), get_my_sites, Default::default());
 
-    let sites: Signal<_> = Signal::derive(move ||  match sites.get() {
+    let sites: Signal<_> = Signal::derive(move || match sites.get() {
         Some(Ok(sites)) => sites,
-        Some(Err(_)) => {vec![]},
+        Some(Err(_)) => {
+            vec![]
+        }
         None => vec![],
     });
 
