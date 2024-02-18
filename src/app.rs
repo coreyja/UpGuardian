@@ -1,11 +1,14 @@
-use crate::{app::sidebar::SidebarLayout, error_template::{AppError, ErrorTemplate}};
+use crate::{
+    app::sidebar::SidebarLayout,
+    error_template::{AppError, ErrorTemplate},
+};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 
 mod sidebar;
 
-#[derive(Clone )]
+#[derive(Clone)]
 struct GlobalClientState {
     font_awesome_kit_id: String,
 }
@@ -13,7 +16,7 @@ struct GlobalClientState {
 impl GlobalClientState {
     fn new() -> Self {
         Self {
-            font_awesome_kit_id: std::env::var("FONT_AWESOME_KIT_ID").unwrap(),
+            font_awesome_kit_id: std::env!("FONT_AWESOME_KIT_ID").to_owned(),
         }
     }
 }
@@ -22,6 +25,9 @@ impl GlobalClientState {
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
+
+    // Provides Query Client for entire app.
+    leptos_query::provide_query_client();
 
     provide_context(GlobalClientState::new());
     let state = expect_context::<GlobalClientState>();
@@ -45,7 +51,7 @@ pub fn App() -> impl IntoView {
         }>
             <SidebarLayout>
                 <Routes>
-                    <Route path="" view=HomePage ssr=SsrMode::Async/>
+                    <Route path="" view=HomePage/>
                 </Routes>
             </SidebarLayout>
         </Router>

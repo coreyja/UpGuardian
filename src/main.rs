@@ -1,10 +1,17 @@
 #[cfg(feature = "ssr")]
 fn main() -> miette::Result<()> {
+    use axum::extract::State;
+    use axum::response::{IntoResponse, Response};
     use axum::Router;
+    use axum_macros::debug_handler;
+    use cja::server::session::DBSession;
+    use http::Request;
     use leptos::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
-    use status::app::*;
+    use status::app::{self, *};
     use status::fileserv::file_and_error_handler;
+
+    use status::routes::routes as app_routes;
 
     use std::net::SocketAddr;
 
@@ -17,6 +24,29 @@ fn main() -> miette::Result<()> {
     use tracing::info;
 
     use status::{jobs::Jobs, routes::routes};
+
+    #[debug_handler]
+    async fn server_fn_handler(State(app_state): State<AppState>, session: Option<DBSession>, request: Request<axum::body::Body>) -> impl IntoResponse {
+
+        // log!("{:?}", path);
+
+        leptos_axum::handle_server_fns_with_context(move || {
+            provide_context(session.clone());
+            provide_context(app_state.clone());
+        }, request).await
+    }
+
+    async fn leptos_routes_handler(State(app_state): State<AppState>, session: Option<DBSession>, req: Request<axum::body::Body>) -> Response {
+            let handler = leptos_axum::render_app_to_stream_with_context(app_state.leptos_options.clone(),
+            move || {
+                provide_context(session.clone());
+                provide_context(app_state.clone());
+            },
+            || view! { <App/> }
+        );
+        handler(req).await.into_response()
+    }
+
 
 
     use status::app_state::AppState;
@@ -38,17 +68,22 @@ fn main() -> miette::Result<()> {
         // <https://github.com/leptos-rs/start-axum#executing-a-server-on-a-remote-machine-without-the-toolchain>
         // Alternately a file can be specified such as Some("Cargo.toml")
         // The file would need to be included with the executable when moved to deployment
-        let conf = get_configuration(None).await.unwrap();
-        let leptos_options = conf.leptos_options;
+        let leptos_options = app_state.leptos_options.clone();
         let addr = leptos_options.site_addr;
+        
+        // Disable query loading, to work around leptos query weirdness
+        leptos_query::suppress_query_load(true);
         let routes = generate_route_list(App);
+        leptos_query::suppress_query_load(false);
 
         // build our application with a route
         // TODO: Integrate this with my old routing from Axum
-        let app = Router::new()
-            .leptos_routes(&leptos_options, routes, App)
+        let app = app_routes()
+            .route("/api/*fn_name", axum::routing::get(server_fn_handler).post(server_fn_handler))
+            .leptos_routes_with_handler(routes, axum::routing::get(leptos_routes_handler) )
+            // .leptos_routes(&leptos_options, routes, App)
             .fallback(file_and_error_handler)
-            .with_state(leptos_options)
+            .with_state(app_state)
             .layer(CookieManagerLayer::new());
 
         let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();

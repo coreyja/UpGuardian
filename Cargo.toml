@@ -71,11 +71,17 @@ tower-http = { version = "0.5", features = ["fs"], optional = true }
 wasm-bindgen = "=0.2.89"
 thiserror = "1"
 http = "1"
+leptos_query = "0.4.2"
 
 
 ##### Leptos
 [features]
-hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
+hydrate = [
+  "leptos/hydrate",
+  "leptos_meta/hydrate",
+  "leptos_router/hydrate",
+  "leptos_query/hydrate",
+]
 ssr = [
   "dep:axum",
   "dep:tokio",
@@ -102,6 +108,7 @@ ssr = [
   "reqwest/rustls-tls",
   "dep:jsonwebtoken",
   "dep:cja",
+  "leptos_query/ssr",
 ]
 
 # Defines a size-optimized profile for the WASM bundle in release mode

@@ -11,7 +11,7 @@ mod login;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/", get(home::show))
+        // .route("/", get(home::show))
         .route("/styles/tailwind.css", get(tailwind_css))
         .route("/login", get(login::show))
         .route("/login/callback", get(login::callback))

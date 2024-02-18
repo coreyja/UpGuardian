@@ -1,9 +1,12 @@
+use axum::extract::FromRef;
 use cja::server::cookies::CookieKey;
+use leptos::LeptosOptions;
 use miette::{miette, IntoDiagnostic};
 use sqlx::PgPool;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
+    pub leptos_options: LeptosOptions,
     pool: PgPool,
     cookie_key: CookieKey,
     pub font_awesome_kit_id: String,
@@ -16,7 +19,11 @@ impl AppState {
         let font_awesome_kit_id = std::env::var("FONT_AWESOME_KIT_ID")
             .map_err(|_| miette!("FONT_AWESOME_KIT_ID must be set"))?;
 
+        let conf = leptos::get_configuration(None).await.into_diagnostic()?;
+        let leptos_options = conf.leptos_options;
+
         Ok(Self {
+            leptos_options,
             pool,
             cookie_key,
             font_awesome_kit_id,
@@ -35,5 +42,11 @@ impl cja::app_state::AppState for AppState {
 
     fn cookie_key(&self) -> &CookieKey {
         &self.cookie_key
+    }
+}
+
+impl FromRef<AppState> for LeptosOptions {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.leptos_options.clone()
     }
 }
