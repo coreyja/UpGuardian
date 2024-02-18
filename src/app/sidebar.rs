@@ -1,8 +1,10 @@
 use leptos::*;
 use leptos_meta::*;
-use leptos_query::QueryResult;
+use leptos_query::{QueryResult, RefetchFn};
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
+
+
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,15 +18,7 @@ pub struct SidebarSite {
 pub async fn get_my_sites(_args: ()) -> Result<Vec<SidebarSite>, ServerFnError> {
     use cja::{app_state::AppState as _, server::session::DBSession};
     use crate::app_state::AppState;
-
-    pub fn extract_session() -> Result<Option<DBSession>, ServerFnError> {
-        use_context::<Option<DBSession>>()
-            .ok_or_else(|| ServerFnError::ServerError("Auth session missing.".into()))
-    }
-    pub fn extract_state() -> Result<AppState, ServerFnError> {
-        use_context::<AppState>()
-            .ok_or_else(|| ServerFnError::ServerError("App state missing.".into()))
-    }
+    use crate::extractors::*;
 
     let session = extract_session()?;
     let state = extract_state()?;
@@ -57,6 +51,34 @@ pub async fn get_my_sites(_args: ()) -> Result<Vec<SidebarSite>, ServerFnError> 
 
     Ok(sites)
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrentUser {
+    user_id: String,
+    session_id: String,
+}
+
+#[server]
+pub async fn get_current_user(args: ()) -> Result<Option<CurrentUser>, ServerFnError> {
+    use crate::extractors::*;
+
+    let session = extract_session()?;
+
+    match session {
+        Some(session) => {
+            Ok(Some(CurrentUser {
+                user_id: session.user_id.to_string(),
+                session_id: session.session_id.to_string(),
+            }))
+        }
+        None => Ok(None),
+    }
+}
+
+pub fn use_current_user() -> QueryResult<Result<Option<CurrentUser>, ServerFnError>, impl RefetchFn> {
+    leptos_query::use_query(|| (), get_current_user, Default::default())
+}
+
 
 #[component]
 pub fn SidebarSiteList(sites: Signal<Vec<SidebarSite>>) -> impl IntoView {
@@ -100,6 +122,11 @@ pub fn SidebarLayout(children: Children) -> impl IntoView {
         Some(Err(_)) => {vec![]},
         None => vec![],
     });
+
+    let QueryResult {
+        data: current_user,
+        ..
+    } = use_current_user();
 
     view! {
         <body class="h-full">
@@ -371,14 +398,27 @@ pub fn SidebarLayout(children: Children) -> impl IntoView {
                                         <SidebarSiteList sites=sites/>
                                     </li>
                                 </Transition>
-                                <li class="-mx-6 mt-auto">
-                                    <a
-                                        class="flex items-center gap-x-4 px-6 py-3 text-sm font-semibold leading-6 text-white hover:bg-indigo-700"
-                                        href="#"
-                                    >
-                                        <span>You are logged in</span>
-                                    </a>
-                                </li>
+                                <Transition>
+                                    <li class="-mx-6 mt-auto">
+                                        <a
+                                            class="flex items-center gap-x-4 px-6 py-3 text-sm font-semibold leading-6 text-white hover:bg-indigo-700"
+                                            href="#"
+                                        >
+                                            {move || {
+                                                if let Some(Ok(Some(current_user))) = current_user.get() {
+                                                    view! {
+                                                        <span>
+                                                            {format!("Logged in as {}", current_user.user_id)}
+                                                        </span>
+                                                    }
+                                                } else {
+                                                    view! { <span>{"Not logged in"}</span> }
+                                                }
+                                            }}
+
+                                        </a>
+                                    </li>
+                                </Transition>
                             </ul>
                         </nav>
                     </div>

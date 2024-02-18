@@ -12,7 +12,6 @@ pub fn hydrate() {
     leptos::mount_to_body(App);
 }
 
-
 #[cfg(feature = "ssr")]
 pub mod app_state;
 #[cfg(feature = "ssr")]
@@ -30,3 +29,6 @@ pub mod templates;
 
 #[cfg(feature = "ssr")]
 pub use app_state::AppState;
+
+#[cfg(feature = "ssr")]
+pub mod extractors;
