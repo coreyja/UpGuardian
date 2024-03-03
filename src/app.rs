@@ -1,5 +1,5 @@
 use crate::{
-    app::sidebar::SidebarLayout,
+    app::{sidebar::SidebarLayout, sites::index::SitesIndex},
     error_template::{AppError, ErrorTemplate},
 };
 use leptos::*;
@@ -7,6 +7,8 @@ use leptos_meta::*;
 use leptos_router::*;
 
 mod sidebar;
+
+pub mod sites;
 
 #[derive(Clone)]
 struct GlobalClientState {
@@ -52,6 +54,7 @@ pub fn App() -> impl IntoView {
             <SidebarLayout>
                 <Routes>
                     <Route path="" view=HomePage/>
+                    <Route path="/my/sites" view=SitesIndex/>
                 </Routes>
             </SidebarLayout>
         </Router>

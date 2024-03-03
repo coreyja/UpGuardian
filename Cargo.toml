@@ -54,7 +54,7 @@ chrono = "0.4.31"
 cja = { version = "0.0.0", git = "https://github.com/coreyja/coreyja.com", branch = "main", optional = true }
 futures = "0.3.30"
 sqlx = { version = "0.7.3", optional = true }
-uuid = { version = "1.6.1", features = ["v4"] }
+uuid = { version = "1.6.1", features = ["v4", "serde"] }
 tower-cookies = { version = "0.10.0", features = [
   "private",
   "signed",

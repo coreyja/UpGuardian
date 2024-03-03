@@ -2,51 +2,14 @@ use leptos::*;
 
 use leptos_query::{QueryResult, RefetchFn};
 
+use leptos_router::A;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SidebarSite {
-    pub id: String,
-    pub name: String,
-    pub href: String,
-}
+use crate::app::sites::get_my_sites;
 
-#[server]
-pub async fn get_my_sites(_args: ()) -> Result<Vec<SidebarSite>, ServerFnError> {
-    use crate::extractors::*;
-    use cja::app_state::AppState as _;
+use super::sites::Site;
 
-    let session = extract_session()?;
-    let state = extract_state()?;
 
-    let sites = if let Some(session) = &session {
-        sqlx::query!(
-            r#"
-  SELECT Sites.site_id, Sites.name, Sites.domain
-  FROM Sites
-  WHERE user_id = $1
-  LIMIT 5
-  "#,
-            session.user_id
-        )
-        .fetch_all(state.db())
-        .await
-        .unwrap()
-    } else {
-        vec![]
-    };
-
-    let sites = sites
-        .into_iter()
-        .map(|site| SidebarSite {
-            id: site.site_id.to_string(),
-            name: site.name,
-            href: format!("/my/sites/{}", site.site_id),
-        })
-        .collect();
-
-    Ok(sites)
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurrentUser {
@@ -75,26 +38,26 @@ pub fn use_current_user() -> QueryResult<Result<Option<CurrentUser>, ServerFnErr
 }
 
 #[component]
-pub fn SidebarSiteList(sites: Signal<Vec<SidebarSite>>) -> impl IntoView {
+pub fn SidebarSiteList(sites: Signal<Vec<Site>>) -> impl IntoView {
     view! {
         <ul class="-mx-2 space-y-1" role="list">
             <For
                 each=sites
-                key=|site| site.id.to_owned()
+                key=|site| site.site_id.to_owned()
                 children=|site| {
                     let first_char = site.name.as_str().chars().next().unwrap_or('*');
                     let name_for_view = site.name.clone();
                     view! {
                         <li>
-                            <a
+                            <A
                                 class="text-indigo-200 hover:text-white hover:bg-indigo-700 group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold"
-                                href=site.href.clone()
+                                href=site.href()
                             >
                                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-indigo-400 bg-indigo-500 text-[0.625rem] font-medium text-white">
                                     {first_char}
                                 </span>
                                 <span class="truncate">{name_for_view}</span>
-                            </a>
+                            </A>
                         </li>
                     }
                 }
@@ -105,7 +68,7 @@ pub fn SidebarSiteList(sites: Signal<Vec<SidebarSite>>) -> impl IntoView {
 }
 
 #[component]
-pub fn MobileSidebar(sites: Signal<Vec<SidebarSite>>) -> impl IntoView {
+pub fn MobileSidebar(sites: Signal<Vec<Site>>) -> impl IntoView {
     let (is_open, set_is_open) = create_signal(false);
 
     view! {
@@ -152,7 +115,7 @@ pub fn MobileSidebar(sites: Signal<Vec<SidebarSite>>) -> impl IntoView {
                             <img
                                 class="h-8 w-auto"
                                 src="https://tailwindui.com/img/logos/mark.svg?color=white"
-                                alt="Status by Coreyja"
+                                alt="Up Guardian by Coreyja"
                             />
                         </div>
                         <nav class="flex flex-1 flex-col">
@@ -197,33 +160,30 @@ pub fn MobileSidebar(sites: Signal<Vec<SidebarSite>>) -> impl IntoView {
                 </svg>
             </button>
             <div class="flex-1 text-sm font-semibold leading-6 text-white">Dashboard</div>
-            <a href="#">
+            <A href="#">
                 <span class="sr-only">Your profile</span>
                 <img
                     class="h-8 w-8 rounded-full bg-indigo-700"
                     src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=facearea&amp;facepad=2&amp;w=256&amp;h=256&amp;q=80"
                     alt=""
                 />
-            </a>
+            </A>
         </div>
     }
 }
 
 #[component]
 pub fn SidebarLink(title: String, href: String, icon_class: String) -> impl IntoView {
+    let icon_classes = format!("self-center shrink-0 text-white fa-fw fa-solid {}", icon_class);
     view! {
         <li>
-            <a
+            <A
                 class="text-indigo-200 hover:text-white hover:bg-indigo-700 group rounded-md p-2 flex gap-x-3"
                 href=href
             >
-                <i
-                    class="self-center shrink-0 text-white fa-fw fa-solid"
-                    class=icon_class
-                    aria-hidden="true"
-                ></i>
+                <i class=icon_classes aria-hidden="true"></i>
                 <span class="text-sm leading-6 font-semibold">{title}</span>
-            </a>
+            </A>
         </li>
     }
 }
@@ -237,7 +197,7 @@ pub fn ProfileFooter() -> impl IntoView {
     view! {
         <Transition>
             <li class="-mx-6 mt-auto">
-                <a
+                <A
                     class="flex items-center gap-x-4 px-6 py-3 text-sm font-semibold leading-6 text-white hover:bg-indigo-700"
                     href="#"
                 >
@@ -251,7 +211,7 @@ pub fn ProfileFooter() -> impl IntoView {
                         }
                     }}
 
-                </a>
+                </A>
             </li>
         </Transition>
     }
@@ -278,7 +238,7 @@ pub fn SidebarLinks() -> impl IntoView {
 #[component]
 pub fn SidebarLayout(children: Children) -> impl IntoView {
     let QueryResult { data: sites, .. } =
-        leptos_query::use_query(|| (), get_my_sites, Default::default());
+        leptos_query::use_query(|| Some(5), get_my_sites, Default::default());
 
     let sites: Signal<_> = Signal::derive(move || match sites.get() {
         Some(Ok(sites)) => sites,
@@ -296,9 +256,9 @@ pub fn SidebarLayout(children: Children) -> impl IntoView {
                 <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
                     <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6">
                         <div class="flex h-16 shrink-0 items-center">
-                            <a href="/">
-                                <h1 class="text-white text-2xl">Status</h1>
-                            </a>
+                            <A href="/">
+                                <h1 class="text-white text-2xl">Up Guardian</h1>
+                            </A>
                         </div>
                         <nav class="flex flex-1 flex-col">
                             <ul class="flex flex-1 flex-col gap-y-7" role="list">
