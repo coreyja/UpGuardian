@@ -5,32 +5,60 @@ use leptos_router::*;
 use crate::app::sites::get_my_sites;
 
 #[component]
+pub fn WaitForOk<T: Clone + 'static, IV: IntoView + 'static, C: Fn(Signal<T>) -> IV + 'static>(
+    thing: Signal<Option<Result<T, leptos::ServerFnError>>>,
+    #[prop(optional, into)] fallback: ViewFn,
+    children: C,
+) -> impl IntoView {
+    view! {
+        <WaitFor
+            thing=thing
+            fallback=fallback
+            children=Box::new(move |thing| {
+                match thing.get() {
+                    Ok(thing) => children(Signal::derive(move || thing.clone())).into_view().into(),
+                    Err(_) => ().into_view().into(),
+                }
+            })
+        />
+    }
+}
+
+#[component]
+pub fn WaitFor<T: Clone + 'static>(
+    thing: Signal<Option<T>>,
+    #[prop(optional, into)] fallback: ViewFn,
+    children: Box<dyn Fn(Signal<T>) -> Fragment>,
+) -> impl IntoView {
+    let fallback = create_memo(move |_| fallback.run());
+
+    view! {
+        <Transition children=Box::new(move || match thing.get() {
+            Some(thing) => children(Signal::derive(move || thing.clone())),
+            None => fallback.into_view().into(),
+        })/>
+    }
+}
+
+#[component]
 pub fn SitesIndex() -> impl IntoView {
     let QueryResult { data: sites, .. } =
         leptos_query::use_query(|| None, get_my_sites, Default::default());
-
-    let sites: Signal<_> = Signal::derive(move || match sites.get() {
-        Some(Ok(sites)) => sites,
-        Some(Err(_)) => {
-            vec![]
-        }
-        None => vec![],
-    });
 
     view! {
         <h1>My Sites</h1>
 
         <A href="/my/sites/new">"Create a new site"</A>
 
-        <Transition>
+        <WaitForOk thing=sites let:sites>
             <ul class="divide-y divide-gray-100" role="list">
-                <For each=sites key=|site| site.site_id.clone() let:site>
+                <For each=sites key=|site| site.site_id let:site>
                     <li class="flex items-center justify-between gap-x-6 py-5">
                         <SiteTableRow site=site/>
                     </li>
                 </For>
             </ul>
-        </Transition>
+        </WaitForOk>
     }
 }
 
