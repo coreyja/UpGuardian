@@ -8,7 +8,9 @@ use leptos_router::*;
 
 mod sidebar;
 
+pub mod current_user;
 pub mod sites;
+pub mod utils;
 
 #[derive(Clone)]
 struct GlobalClientState {

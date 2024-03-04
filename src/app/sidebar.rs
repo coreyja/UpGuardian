@@ -5,37 +5,9 @@ use leptos_query::{QueryResult, RefetchFn};
 use leptos_router::A;
 use serde::{Deserialize, Serialize};
 
-use crate::app::sites::get_my_sites;
+use crate::app::{current_user::use_current_user, sites::get_my_sites, utils::WaitForOk};
 
 use super::sites::Site;
-
-
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrentUser {
-    user_id: String,
-    session_id: String,
-}
-
-#[server]
-pub async fn get_current_user(_args: ()) -> Result<Option<CurrentUser>, ServerFnError> {
-    use crate::extractors::*;
-
-    let session = extract_session()?;
-
-    match session {
-        Some(session) => Ok(Some(CurrentUser {
-            user_id: session.user_id.to_string(),
-            session_id: session.session_id.to_string(),
-        })),
-        None => Ok(None),
-    }
-}
-
-pub fn use_current_user() -> QueryResult<Result<Option<CurrentUser>, ServerFnError>, impl RefetchFn>
-{
-    leptos_query::use_query(|| (), get_current_user, Default::default())
-}
 
 #[component]
 pub fn SidebarSiteList(sites: Signal<Vec<Site>>) -> impl IntoView {
@@ -68,7 +40,7 @@ pub fn SidebarSiteList(sites: Signal<Vec<Site>>) -> impl IntoView {
 }
 
 #[component]
-pub fn MobileSidebar(sites: Signal<Vec<Site>>) -> impl IntoView {
+pub fn MobileSidebar(sites: Signal<Option<Result<Vec<Site>, ServerFnError>>>) -> impl IntoView {
     let (is_open, set_is_open) = create_signal(false);
 
     view! {
@@ -123,14 +95,14 @@ pub fn MobileSidebar(sites: Signal<Vec<Site>>) -> impl IntoView {
                                 <li>
                                     <SidebarLinks/>
                                 </li>
-                                <Transition>
+                                <WaitForOk thing=sites let:sites>
                                     <li>
                                         <div class="text-xs font-semibold leading-6 text-indigo-200">
                                             Your Sites
                                         </div>
                                         <SidebarSiteList sites=sites/>
                                     </li>
-                                </Transition>
+                                </WaitForOk>
                             </ul>
                         </nav>
                     </div>
@@ -174,7 +146,10 @@ pub fn MobileSidebar(sites: Signal<Vec<Site>>) -> impl IntoView {
 
 #[component]
 pub fn SidebarLink(title: String, href: String, icon_class: String) -> impl IntoView {
-    let icon_classes = format!("self-center shrink-0 text-white fa-fw fa-solid {}", icon_class);
+    let icon_classes = format!(
+        "self-center shrink-0 text-white fa-fw fa-solid {}",
+        icon_class
+    );
     view! {
         <li>
             <A
@@ -240,14 +215,6 @@ pub fn SidebarLayout(children: Children) -> impl IntoView {
     let QueryResult { data: sites, .. } =
         leptos_query::use_query(|| Some(5), get_my_sites, Default::default());
 
-    let sites: Signal<_> = Signal::derive(move || match sites.get() {
-        Some(Ok(sites)) => sites,
-        Some(Err(_)) => {
-            vec![]
-        }
-        None => vec![],
-    });
-
     view! {
         <body class="h-full">
             <div>
@@ -265,14 +232,14 @@ pub fn SidebarLayout(children: Children) -> impl IntoView {
                                 <li>
                                     <SidebarLinks/>
                                 </li>
-                                <Transition>
+                                <WaitForOk thing=sites let:sites>
                                     <li>
                                         <div class="text-xs font-semibold leading-6 text-indigo-200">
                                             Your Sites
                                         </div>
                                         <SidebarSiteList sites=sites/>
                                     </li>
-                                </Transition>
+                                </WaitForOk>
 
                                 <ProfileFooter/>
                             </ul>
