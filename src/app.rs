@@ -58,19 +58,21 @@ pub fn RequireAuth<C: Fn(CurrentUser) -> CIV + 'static, CIV: IntoView + 'static>
 pub fn MyPages() -> impl IntoView {
     let current_user = use_current_user();
 
-    view! {
-        <Suspense children=std::rc::Rc::new(move || {
-            let Some(Ok(Some(current_user))) = current_user.data.get() else {
-                return view! { <p>"You must be logged in to view this page"</p> }.into_view();
-            };
-            view! {
-                <h1>"My Pages"</h1>
-                <p>"Welcome, " {current_user.user_id} "!"</p>
+    let user_id = Signal::derive(move || {
+        if let Some(Ok(Some(current_user))) = current_user.data.get() {
+            current_user.user_id.clone()
+        } else {
+            "Unknown".to_owned()
+        }
+    });
 
-                <Outlet/>
-            }
-                .into_view()
-        })/>
+    view! {
+        <Suspense>
+            <h1>"My Pages"</h1>
+            <p>"Welcome, " {user_id} "!"</p>
+
+            <Outlet/>
+        </Suspense>
     }
 }
 
@@ -105,8 +107,8 @@ pub fn App() -> impl IntoView {
             <SidebarLayout>
                 <Routes>
                     <Route path="" view=HomePage/>
-                    <Route path="my" view=MyPages ssr=SsrMode::PartiallyBlocked>
-                        <Route path="sites" view=SitesIndex ssr=SsrMode::PartiallyBlocked/>
+                    <Route path="my" view=MyPages>
+                        <Route path="sites" view=SitesIndex/>
                     </Route>
                 </Routes>
             </SidebarLayout>

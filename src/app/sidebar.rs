@@ -169,11 +169,11 @@ pub fn SidebarLink(title: String, href: String, icon_class: String) -> impl Into
 
 #[component]
 pub fn ProfileFooter() -> impl IntoView {
-    let QueryResult {
-        data: current_user, ..
-    } = use_current_user();
-    // let current_user =
-    //     Signal::derive(|| -> Option<Result<Option<CurrentUser>, ServerFnError>> { Some(Ok(None)) });
+    // let QueryResult {
+    //     data: current_user, ..
+    // } = use_current_user();
+    let current_user =
+        Signal::derive(|| -> Option<Result<Option<CurrentUser>, ServerFnError>> { Some(Ok(None)) });
 
     view! {
         <Transition>
