@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     app::{
         current_user::use_current_user, sidebar::SidebarLayout, sites::index::SitesIndex,
@@ -39,13 +41,16 @@ pub fn RequireAuth<C: Fn(CurrentUser) -> CIV + 'static, CIV: IntoView + 'static>
         data: current_user, ..
     } = use_current_user();
 
+    let children = Rc::new(children);
+
     view! {
         <WaitForOk
             thing=current_user
             loading=|| view! { <p>"Loading..."</p> }.into_view()
             onError=|| view! { <p>"Error loading current user"</p> }.into_view()
             children=move |current_user| {
-                match current_user.get() {
+                let children = Rc::clone(&children);
+                move || match current_user.get() {
                     Some(current_user) => children(current_user).into_view(),
                     None => view! { <p>"You must be logged in to view this page"</p> }.into_view(),
                 }
@@ -76,6 +81,10 @@ pub fn MyPages() -> impl IntoView {
             {move || {
                 if is_logged_in.get() { view! { <Outlet/> }.into_view() } else { ().into_view() }
             }}
+
+        // <RequireAuth let:_user>
+        // <Outlet/>
+        // </RequireAuth>
 
         </Suspense>
     }
