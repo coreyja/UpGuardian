@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use leptos::*;
 
 #[component]
@@ -27,12 +29,15 @@ pub fn WaitFor<T: Clone + 'static>(
     #[prop(optional, into)] fallback: ViewFn,
     children: Box<dyn Fn(Signal<T>) -> Fragment>,
 ) -> impl IntoView {
-    let fallback = create_memo(move |_| fallback.run());
-
     view! {
-        <Transition children=Box::new(move || match thing.get() {
-            Some(thing) => children(Signal::derive(move || thing.clone())),
-            None => fallback.into_view().into(),
-        })/>
+        <Suspense
+            fallback=fallback.clone()
+            children=Rc::new(move || {
+                match thing.get() {
+                    Some(thing) => children(Signal::derive(move || thing.clone())),
+                    None => fallback.run().into_view().into(),
+                }
+            })
+        />
     }
 }

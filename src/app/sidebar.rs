@@ -5,7 +5,11 @@ use leptos_query::{QueryResult, RefetchFn};
 use leptos_router::A;
 use serde::{Deserialize, Serialize};
 
-use crate::app::{current_user::use_current_user, sites::get_my_sites, utils::WaitForOk};
+use crate::app::{
+    current_user::{use_current_user, CurrentUser},
+    sites::get_my_sites,
+    utils::WaitForOk,
+};
 
 use super::sites::Site;
 
@@ -168,6 +172,8 @@ pub fn ProfileFooter() -> impl IntoView {
     let QueryResult {
         data: current_user, ..
     } = use_current_user();
+    // let current_user =
+    //     Signal::derive(|| -> Option<Result<Option<CurrentUser>, ServerFnError>> { Some(Ok(None)) });
 
     view! {
         <Transition>

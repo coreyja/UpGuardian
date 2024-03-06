@@ -25,5 +25,9 @@ pub async fn get_current_user(_args: ()) -> Result<Option<CurrentUser>, ServerFn
 
 pub fn use_current_user() -> QueryResult<Result<Option<CurrentUser>, ServerFnError>, impl RefetchFn>
 {
-    leptos_query::use_query(|| (), get_current_user, Default::default())
+    leptos_query::use_query(|| (), get_current_user, QueryOptions {
+        stale_time: Some(std::time::Duration::from_secs(60)),
+        resource_option: ResourceOption::Blocking,
+        ..Default::default()
+    })
 }
