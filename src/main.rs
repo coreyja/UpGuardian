@@ -24,8 +24,6 @@ fn main() -> miette::Result<()> {
         session: Option<DBSession>,
         request: Request<axum::body::Body>,
     ) -> impl IntoResponse {
-        // log!("{:?}", path);
-
         leptos_axum::handle_server_fns_with_context(
             move || {
                 provide_context(session.clone());

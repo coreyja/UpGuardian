@@ -3,17 +3,18 @@ use leptos::*;
 #[component]
 pub fn WaitForOk<T: Clone + 'static, IV: IntoView + 'static, C: Fn(Signal<T>) -> IV + 'static>(
     thing: Signal<Option<Result<T, leptos::ServerFnError>>>,
-    #[prop(optional, into)] fallback: ViewFn,
+    #[prop(optional, into)] loading: ViewFn,
+    #[prop(optional, into)] onError: ViewFn,
     children: C,
 ) -> impl IntoView {
     view! {
         <WaitFor
             thing=thing
-            fallback=fallback
+            fallback=loading
             children=Box::new(move |thing| {
                 match thing.get() {
                     Ok(thing) => children(Signal::derive(move || thing.clone())).into_view().into(),
-                    Err(_) => ().into_view().into(),
+                    Err(_) => onError.run().into(),
                 }
             })
         />

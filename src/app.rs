@@ -1,10 +1,16 @@
 use crate::{
-    app::{sidebar::SidebarLayout, sites::index::SitesIndex},
+    app::{
+        current_user::use_current_user, sidebar::SidebarLayout, sites::index::SitesIndex,
+        utils::WaitForOk,
+    },
     error_template::{AppError, ErrorTemplate},
 };
 use leptos::*;
 use leptos_meta::*;
+use leptos_query::QueryResult;
 use leptos_router::*;
+
+use self::current_user::CurrentUser;
 
 mod sidebar;
 
@@ -22,6 +28,41 @@ impl GlobalClientState {
         Self {
             font_awesome_kit_id: std::env!("FONT_AWESOME_KIT_ID").to_owned(),
         }
+    }
+}
+
+#[component]
+pub fn RequireAuth<C: Fn(CurrentUser) -> CIV + 'static, CIV: IntoView + 'static>(
+    children: C,
+) -> impl IntoView {
+    let QueryResult {
+        data: current_user, ..
+    } = use_current_user();
+
+    view! {
+        <WaitForOk
+            thing=current_user
+            loading=|| view! { <p>"Loading..."</p> }.into_view()
+            onError=|| view! { <p>"Error loading current user"</p> }.into_view()
+            children=move |current_user| {
+                match current_user.get() {
+                    Some(current_user) => children(current_user).into_view(),
+                    None => view! { <p>"You must be logged in to view this page"</p> }.into_view(),
+                }
+            }
+        />
+    }
+}
+
+#[component]
+pub fn MyPages() -> impl IntoView {
+    view! {
+        <RequireAuth let:current_user>
+            <h1>"My Pages"</h1>
+            <p>"Welcome, " {current_user.user_id} "!"</p>
+
+            <Outlet/>
+        </RequireAuth>
     }
 }
 
@@ -56,7 +97,9 @@ pub fn App() -> impl IntoView {
             <SidebarLayout>
                 <Routes>
                     <Route path="" view=HomePage/>
-                    <Route path="/my/sites" view=SitesIndex/>
+                    <Route path="my" view=MyPages>
+                        <Route path="sites" view=SitesIndex/>
+                    </Route>
                 </Routes>
             </SidebarLayout>
         </Router>
