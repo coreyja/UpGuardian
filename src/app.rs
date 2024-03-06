@@ -58,6 +58,8 @@ pub fn RequireAuth<C: Fn(CurrentUser) -> CIV + 'static, CIV: IntoView + 'static>
 pub fn MyPages() -> impl IntoView {
     let current_user = use_current_user();
 
+    let is_logged_in = Signal::derive(move || matches!(current_user.data.get(), Some(Ok(Some(_)))));
+
     let user_id = Signal::derive(move || {
         if let Some(Ok(Some(current_user))) = current_user.data.get() {
             current_user.user_id.clone()
@@ -71,7 +73,10 @@ pub fn MyPages() -> impl IntoView {
             <h1>"My Pages"</h1>
             <p>"Welcome, " {user_id} "!"</p>
 
-            <Outlet/>
+            {move || {
+                if is_logged_in.get() { view! { <Outlet/> }.into_view() } else { ().into_view() }
+            }}
+
         </Suspense>
     }
 }
