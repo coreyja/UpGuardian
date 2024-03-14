@@ -24,7 +24,7 @@ RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/app bash
 
 ENV PATH="/app/bin:${PATH}"
 
-RUN cargo build --release --locked --bin UpGuardian
+RUN cargo build --release --locked --bin up_guardian
 
 # Start building the final image
 FROM debian:stable-slim as final
@@ -35,8 +35,8 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/* \
   && update-ca-certificates
 
-COPY --from=builder /app/target/release/UpGuardian .
+COPY --from=builder /app/target/release/up_guardian .
 
 EXPOSE 3001
 
-ENTRYPOINT ["./UpGuardian"]
+ENTRYPOINT ["./up_guardian"]

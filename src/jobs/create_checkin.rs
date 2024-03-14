@@ -1,8 +1,8 @@
-use chrono::Duration;
+
 use cja::{app_state::AppState as _, jobs::Job};
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::types::PgInterval;
+
 use tokio::time::Instant;
 use uuid::Uuid;
 

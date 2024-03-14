@@ -5,7 +5,7 @@ use axum::{
     Router,
 };
 use include_dir::Dir;
-use miette::{IntoDiagnostic as _, Report};
+use miette::{IntoDiagnostic as _};
 
 use crate::app_state::AppState;
 

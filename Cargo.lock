@@ -3,39 +3,6 @@
 version = 3
 
 [[package]]
-name = "UpGuardian"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum 0.7.4",
- "axum-macros",
- "chrono",
- "cja",
- "futures",
- "humantime",
- "include_dir",
- "jsonwebtoken",
- "maud",
- "miette",
- "mime_guess",
- "opentelemetry",
- "opentelemetry-otlp",
- "reqwest",
- "sentry",
- "sentry-tower",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tower-cookies",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "tracing-tree",
- "uuid",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3275,6 +3242,39 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
+name = "up_guardian"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum 0.7.4",
+ "axum-macros",
+ "chrono",
+ "cja",
+ "futures",
+ "humantime",
+ "include_dir",
+ "jsonwebtoken",
+ "maud",
+ "miette",
+ "mime_guess",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "reqwest",
+ "sentry",
+ "sentry-tower",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tower-cookies",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "tracing-tree",
+ "uuid",
+]
 
 [[package]]
 name = "ureq"
