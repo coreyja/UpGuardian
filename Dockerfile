@@ -20,7 +20,7 @@ COPY . .
 COPY tailwind.config.js .
 RUN ./tailwindcss -i src/tailwind.css -o target/tailwind.css
 
-RUN cargo build --release --locked --bin status
+RUN cargo build --release --locked --bin upguardian
 
 # Start building the final image
 FROM debian:stable-slim as final
@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/* \
   && update-ca-certificates
 
-COPY --from=builder /app/target/release/status .
+COPY --from=builder /app/target/release/UpGuardian .
 
 EXPOSE 3001
 
-ENTRYPOINT ["./status"]
+ENTRYPOINT ["./UpGuardian"]

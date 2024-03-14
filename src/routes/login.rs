@@ -20,7 +20,7 @@ pub async fn show(session: Option<DBSession>) -> axum::response::Response {
     if session.is_none() {
         let idp_url =
             std::env::var("COREYJA_IDP_URL").unwrap_or_else(|_| "https://coreyja.com".into());
-        let login_url = format!("{}/login/status", idp_url);
+        let login_url = format!("{}/login/upguardian", idp_url);
         Redirect::temporary(&login_url).into_response()
     } else {
         Redirect::temporary("/").into_response()
@@ -52,7 +52,7 @@ pub async fn callback(
     )
     .unwrap();
 
-    let claim_url = format!("{}/login/status", idp_url);
+    let claim_url = format!("{}/login/upguardian", idp_url);
 
     let resp = client
         .post(claim_url)
