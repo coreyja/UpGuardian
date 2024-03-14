@@ -1,8 +1,9 @@
 [package]
-name = "status"
+name = "up_guardian"
 version = "0.1.0"
 edition = "2021"
 license = "private"
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -53,3 +54,6 @@ futures = "0.3.30"
 sqlx = "0.7.3"
 uuid = { version = "1.6.1", features = ["v4"] }
 tower-cookies = { version = "0.10.0", features = ["private", "signed"] }
+mime_guess = "2.0.4"
+include_dir = { version = "0.7.3", features = ["metadata", "glob"] }
+humantime = "2.1.0"

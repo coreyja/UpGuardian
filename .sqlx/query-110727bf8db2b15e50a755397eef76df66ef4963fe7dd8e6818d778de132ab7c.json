@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "duration_nanos",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -39,7 +44,8 @@
       false,
       false,
       true,
-      false
+      false,
+      true
     ]
   },
   "hash": "110727bf8db2b15e50a755397eef76df66ef4963fe7dd8e6818d778de132ab7c"

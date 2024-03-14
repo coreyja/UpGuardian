@@ -13,7 +13,7 @@ pub async fn show(session: Option<DBSession>, State(state): State<AppState>) -> 
                 script src="https://unpkg.com/htmx.org@1.9.10" {}
                 link rel="stylesheet" href="/styles/tailwind.css" {}
 
-                title { "Status - Uptime Monitoring by coreyja" }
+                title { "UpGuardian - Uptime Monitoring by coreyja" }
             }
 
             body {

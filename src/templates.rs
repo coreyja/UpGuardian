@@ -21,17 +21,21 @@ impl IntoResponse for Template {
                     link rel="stylesheet" href="/styles/tailwind.css" {}
                     link rel="stylesheet" href=(format!("https://kit.fontawesome.com/{}.css", self.state.font_awesome_kit_id)) crossorigin="anonymous" {}
 
-                    title { "Status - Uptime Monitoring by coreyja" }
+                    script src="/public/frontend/index.js" {}
+
+                    meta name="viewport" content="width=device-width, initial-scale=1.0" {}
+
+                    title { "UpGuardian - Uptime Monitoring by coreyja" }
                   }
 
                   body class="h-full" {
                     div {
-                      div."relative z-50 lg:hidden" role="dialog" aria-modal="true" {
+                      div."relative z-50 lg:hidden hidden" role="dialog" aria-modal="true" {
                           div."fixed inset-0 bg-gray-900/80" {}
                           div."fixed inset-0 flex" {
                               div."relative mr-16 flex w-full max-w-xs flex-1" {
                                   div."absolute left-full top-0 flex w-16 justify-center pt-5" {
-                                      button."-m-2.5 p-2.5" type="button" {
+                                      button."-m-2.5 p-2.5" type="button" data-app="ToggleClass" data-class="hidden" data-target="div[role='dialog']" {
                                           span."sr-only" {
                                               "Close sidebar"
                                           }
@@ -42,7 +46,9 @@ impl IntoResponse for Template {
                                   }
                                   div."flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6 pb-2" {
                                       div."flex h-16 shrink-0 items-center" {
-                                          img."h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=white" alt="Status by Coreyja" {}
+                                        a href="/" {
+                                          img."h-12 w-auto mt-2" src="/public/Logomark.png" alt="UpGuardian by Coreyja" {}
+                                        }
                                       }
                                       nav."flex flex-1 flex-col" {
                                           ul."flex flex-1 flex-col gap-y-7" role="list" {
@@ -146,10 +152,10 @@ impl IntoResponse for Template {
                       // This is the sidebar for larger screens
                       div."hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col" {
                           div."flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6" {
-                              div."flex h-16 shrink-0 items-center" {
-                                  // img."h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=white" alt="Your Company" {}
+                              div."flex shrink-0 items-center" {
                                   a href="/" {
-                                    h1."text-white text-2xl" { "Status" }
+                                    // h1."text-white text-2xl" { "UpGuardian" }
+                                    img."w-auto mt-4" src="/public/Logo.png" alt="UpGuradian by coreyja" {}
                                   }
                               }
                               nav."flex flex-1 flex-col" {
@@ -202,7 +208,7 @@ impl IntoResponse for Template {
                           }
                       }
                       div."sticky top-0 z-40 flex items-center gap-x-6 bg-indigo-600 px-4 py-4 shadow-sm sm:px-6 lg:hidden" {
-                          button."-m-2.5 p-2.5 text-indigo-200 lg:hidden" type="button" {
+                          button."-m-2.5 p-2.5 text-indigo-200 lg:hidden" type="button" data-app="ToggleClass" data-class="hidden" data-target="div[role='dialog']"{
                               span."sr-only" {
                                   "Open sidebar"
                               }

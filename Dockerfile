@@ -20,7 +20,11 @@ COPY . .
 COPY tailwind.config.js .
 RUN ./tailwindcss -i src/tailwind.css -o target/tailwind.css
 
-RUN cargo build --release --locked --bin status
+RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/app bash
+
+ENV PATH="/app/bin:${PATH}"
+
+RUN cargo build --release --locked --bin up_guardian
 
 # Start building the final image
 FROM debian:stable-slim as final
@@ -31,8 +35,8 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/* \
   && update-ca-certificates
 
-COPY --from=builder /app/target/release/status .
+COPY --from=builder /app/target/release/up_guardian .
 
 EXPOSE 3001
 
-ENTRYPOINT ["./status"]
+ENTRYPOINT ["./up_guardian"]
