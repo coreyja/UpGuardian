@@ -111,8 +111,9 @@ pub async fn show(
       SELECT *
       FROM Checkins
       WHERE page_id = $1
+      AND created_at >= now() - INTERVAL '6 hours'
+      AND duration_nanos is not null
       ORDER BY created_at DESC
-      LIMIT 10
     "#,
         page_id
     )
