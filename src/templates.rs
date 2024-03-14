@@ -21,6 +21,8 @@ impl IntoResponse for Template {
                     link rel="stylesheet" href="/styles/tailwind.css" {}
                     link rel="stylesheet" href=(format!("https://kit.fontawesome.com/{}.css", self.state.font_awesome_kit_id)) crossorigin="anonymous" {}
 
+                    meta name="viewport" content="width=device-width, initial-scale=1.0" {}
+
                     title { "Status - Uptime Monitoring by coreyja" }
                   }
 
@@ -42,7 +44,7 @@ impl IntoResponse for Template {
                                   }
                                   div."flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6 pb-2" {
                                       div."flex h-16 shrink-0 items-center" {
-                                          img."h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=white" alt="Status by Coreyja" {}
+                                          img."h-12 w-auto" src="/public/Logomark.png" alt="UpGuardian by Coreyja" {}
                                       }
                                       nav."flex flex-1 flex-col" {
                                           ul."flex flex-1 flex-col gap-y-7" role="list" {
@@ -146,10 +148,10 @@ impl IntoResponse for Template {
                       // This is the sidebar for larger screens
                       div."hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col" {
                           div."flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6" {
-                              div."flex h-16 shrink-0 items-center" {
-                                  // img."h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=white" alt="Your Company" {}
+                              div."flex shrink-0 items-center" {
                                   a href="/" {
-                                    h1."text-white text-2xl" { "Status" }
+                                    // h1."text-white text-2xl" { "UpGuardian" }
+                                    img."w-auto" src="/public/Logo.png" alt="UpGuradian by coreyja" {}
                                   }
                               }
                               nav."flex flex-1 flex-col" {
