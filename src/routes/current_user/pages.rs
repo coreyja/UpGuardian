@@ -204,8 +204,11 @@ impl Render for CheckinGraph {
         let width = 200;
         let height = full_height - height_padding * 2;
 
-        let total_points = self.checkins.len();
-        let per_point_x = width / total_points;
+        let min_time = self.checkins.iter().map(|p| p.created_at).min().unwrap();
+        let max_time = self.checkins.iter().map(|p| p.created_at).max().unwrap();
+
+        let total_time = max_time - min_time;
+        let total_time = total_time.to_std().unwrap();
 
         let min_duration_nanos = self
             .checkins
@@ -234,9 +237,10 @@ impl Render for CheckinGraph {
         let points = self
             .checkins
             .iter()
-            .enumerate()
-            .map(|(i, p)| GraphPoint {
-                x: (per_point_x * i) as f64,
+            .map(|p| GraphPoint {
+                x: (((p.created_at - min_time).to_std().unwrap().as_nanos() as f64
+                    / total_time.as_nanos() as f64)
+                    * width as f64),
                 y: ((full_height - height_padding) as f64)
                     - (((p.duration_nanos.unwrap() as f64 - min_duration_nanos as f64)
                         / height_range as f64)
