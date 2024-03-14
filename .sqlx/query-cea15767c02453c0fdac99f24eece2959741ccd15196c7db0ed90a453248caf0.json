@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO Checkins (page_id, status_code, outcome, duration_nanos)\n        VALUES ($1, $2, $3, $4)\n      ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cea15767c02453c0fdac99f24eece2959741ccd15196c7db0ed90a453248caf0"
+}

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use axum::{
     extract::{Path, State},
     response::{IntoResponse, Redirect},
@@ -125,9 +127,13 @@ pub async fn show(
       ul {
         @for checkin in checkins {
           li {
-            (checkin.created_at) " - " (checkin.outcome)
+            (checkin.created_at.format("%d/%m/%Y %H:%M:%S")) " - " (checkin.outcome)
             @if let Some(status) = checkin.status_code {
               " - " (status)
+            }
+            @if let Some(duration) = checkin.duration_nanos {
+              @let duration = Duration::from_nanos(duration as u64);
+              " - " (humantime::format_duration(duration))
             }
           }
         }

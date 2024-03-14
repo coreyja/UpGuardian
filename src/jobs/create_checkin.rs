@@ -1,6 +1,9 @@
+use chrono::Duration;
 use cja::{app_state::AppState as _, jobs::Job};
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::types::PgInterval;
+use tokio::time::Instant;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
@@ -32,30 +35,33 @@ impl Job<AppState> for CreateCheckin {
         let path = page.path;
 
         let url = format!("https://{domain}{path}");
+        let now = Instant::now();
         let resp = reqwest::get(&url).await;
 
         let (status, outcome) = match resp {
             Err(_) => (None, "error"),
-            Ok(resp) => (
-                Some(resp.status()),
+            Ok(resp) => (Some(resp.status()), {
                 if resp.status().is_success() {
                     "success"
                 } else {
                     "failure"
-                },
-            ),
+                }
+            }),
         };
+        let duration = now.elapsed();
+        let duration: i64 = duration.as_nanos().try_into().unwrap();
 
         let status: Option<i32> = status.map(|s| s.as_u16().into());
 
         sqlx::query!(
             r#"
-        INSERT INTO Checkins (page_id, status_code, outcome)
-        VALUES ($1, $2, $3)
+        INSERT INTO Checkins (page_id, status_code, outcome, duration_nanos)
+        VALUES ($1, $2, $3, $4)
       "#,
             self.page_id,
             status,
-            outcome
+            outcome,
+            duration
         )
         .execute(app_state.db())
         .await
