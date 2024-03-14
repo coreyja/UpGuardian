@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n      SELECT *\n      FROM Checkins\n      WHERE page_id = $1\n      ORDER BY created_at DESC\n      LIMIT 10\n    ",
+  "query": "\n      SELECT *\n      FROM Checkins\n      WHERE page_id = $1\n      AND created_at >= now() - INTERVAL '6 hours'\n      AND duration_nanos is not null\n      ORDER BY created_at DESC\n    ",
   "describe": {
     "columns": [
       {
@@ -48,5 +48,5 @@
       true
     ]
   },
-  "hash": "110727bf8db2b15e50a755397eef76df66ef4963fe7dd8e6818d778de132ab7c"
+  "hash": "bf7b19943512e8e3f242005934bec0b8b50553270e00decb2e849eda31eaca03"
 }
