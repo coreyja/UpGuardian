@@ -21,6 +21,8 @@ impl IntoResponse for Template {
                     link rel="stylesheet" href="/styles/tailwind.css" {}
                     link rel="stylesheet" href=(format!("https://kit.fontawesome.com/{}.css", self.state.font_awesome_kit_id)) crossorigin="anonymous" {}
 
+                    script src="/public/frontend/index.js" {}
+
                     meta name="viewport" content="width=device-width, initial-scale=1.0" {}
 
                     title { "UpGuardian - Uptime Monitoring by coreyja" }
@@ -28,12 +30,12 @@ impl IntoResponse for Template {
 
                   body class="h-full" {
                     div {
-                      div."relative z-50 lg:hidden" role="dialog" aria-modal="true" {
+                      div."relative z-50 lg:hidden hidden" role="dialog" aria-modal="true" {
                           div."fixed inset-0 bg-gray-900/80" {}
                           div."fixed inset-0 flex" {
                               div."relative mr-16 flex w-full max-w-xs flex-1" {
                                   div."absolute left-full top-0 flex w-16 justify-center pt-5" {
-                                      button."-m-2.5 p-2.5" type="button" {
+                                      button."-m-2.5 p-2.5" type="button" data-app="ToggleClass" data-class="hidden" data-target="div[role='dialog']" {
                                           span."sr-only" {
                                               "Close sidebar"
                                           }
@@ -206,7 +208,7 @@ impl IntoResponse for Template {
                           }
                       }
                       div."sticky top-0 z-40 flex items-center gap-x-6 bg-indigo-600 px-4 py-4 shadow-sm sm:px-6 lg:hidden" {
-                          button."-m-2.5 p-2.5 text-indigo-200 lg:hidden" type="button" {
+                          button."-m-2.5 p-2.5 text-indigo-200 lg:hidden" type="button" data-app="ToggleClass" data-class="hidden" data-target="div[role='dialog']"{
                               span."sr-only" {
                                   "Open sidebar"
                               }
