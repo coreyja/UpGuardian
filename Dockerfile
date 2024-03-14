@@ -20,6 +20,10 @@ COPY . .
 COPY tailwind.config.js .
 RUN ./tailwindcss -i src/tailwind.css -o target/tailwind.css
 
+RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/app bash
+
+ENV PATH="/app/bin:${PATH}"
+
 RUN cargo build --release --locked --bin UpGuardian
 
 # Start building the final image
