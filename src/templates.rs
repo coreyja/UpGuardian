@@ -23,7 +23,7 @@ impl IntoResponse for Template {
 
                     meta name="viewport" content="width=device-width, initial-scale=1.0" {}
 
-                    title { "Status - Uptime Monitoring by coreyja" }
+                    title { "UpGuardian - Uptime Monitoring by coreyja" }
                   }
 
                   body class="h-full" {
@@ -44,7 +44,9 @@ impl IntoResponse for Template {
                                   }
                                   div."flex grow flex-col gap-y-5 overflow-y-auto bg-indigo-600 px-6 pb-2" {
                                       div."flex h-16 shrink-0 items-center" {
-                                          img."h-12 w-auto" src="/public/Logomark.png" alt="UpGuardian by Coreyja" {}
+                                        a href="/" {
+                                          img."h-12 w-auto mt-2" src="/public/Logomark.png" alt="UpGuardian by Coreyja" {}
+                                        }
                                       }
                                       nav."flex flex-1 flex-col" {
                                           ul."flex flex-1 flex-col gap-y-7" role="list" {
@@ -151,7 +153,7 @@ impl IntoResponse for Template {
                               div."flex shrink-0 items-center" {
                                   a href="/" {
                                     // h1."text-white text-2xl" { "UpGuardian" }
-                                    img."w-auto" src="/public/Logo.png" alt="UpGuradian by coreyja" {}
+                                    img."w-auto mt-4" src="/public/Logo.png" alt="UpGuradian by coreyja" {}
                                   }
                               }
                               nav."flex flex-1 flex-col" {
