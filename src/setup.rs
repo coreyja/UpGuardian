@@ -10,7 +10,7 @@ use tracing_tree::HierarchicalLayer;
 
 pub fn setup_tracing() -> Result<()> {
     let rust_log = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| "warn,server=trace,tower_http=debug,cja=info".into());
+        .unwrap_or_else(|_| "warn,up_guardian=trace,tower_http=debug,cja=info".into());
 
     let env_filter = EnvFilter::builder()
         .parse(&rust_log)
