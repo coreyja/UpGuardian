@@ -265,15 +265,13 @@ impl Render for SvgPathWithPoints {
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap();
         let x_midpoint = (x_min + x_max) / 2.0;
+        let split_index = points
+            .iter()
+            .position(|p| p.x > x_midpoint)
+            .unwrap_or(length / 2);
 
-        let left_side = points
-            .iter()
-            .filter(|p| p.x <= x_midpoint)
-            .collect::<Vec<_>>();
-        let right_side = points
-            .iter()
-            .filter(|p| p.x > x_midpoint)
-            .collect::<Vec<_>>();
+        let mut left_side = points.clone();
+        let right_side = left_side.split_off(split_index);
 
         assert_eq!(points.len(), left_side.len() + right_side.len());
 
