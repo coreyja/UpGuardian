@@ -17,6 +17,8 @@ mod routes;
 
 mod templates;
 
+mod server_tracing;
+
 use app_state::AppState;
 
 fn main() -> Result<()> {
@@ -31,9 +33,15 @@ fn main() -> Result<()> {
 }
 
 async fn run_axum(app_state: AppState) -> miette::Result<()> {
+    let tracer = server_tracing::Tracer;
+    let trace_layer = tower_http::trace::TraceLayer::new_for_http()
+        .make_span_with(tracer)
+        .on_response(tracer);
+
     let app = routes()
         .with_state(app_state)
-        .layer(CookieManagerLayer::new());
+        .layer(CookieManagerLayer::new())
+        .layer(trace_layer);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
     let listener = TcpListener::bind(&addr).await.unwrap();

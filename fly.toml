@@ -9,7 +9,7 @@ kill_signal = "SIGINT"
 kill_timeout = "5s"
 
 [env]
-OTEL_SERVICE_NAME = "status"
+OTEL_SERVICE_NAME = "UpGuardian"
 
 [http_service]
 internal_port = 3001

@@ -57,3 +57,4 @@ tower-cookies = { version = "0.10.0", features = ["private", "signed"] }
 mime_guess = "2.0.4"
 include_dir = { version = "0.7.3", features = ["metadata", "glob"] }
 humantime = "2.1.0"
+tower-http = { version = "0.5.2", features = ["trace"] }
