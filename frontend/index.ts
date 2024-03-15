@@ -17,3 +17,28 @@ document.addEventListener("click", function (e) {
     }
   }
 });
+
+document.addEventListener("change", async function (e) {
+  if (!e.target) return;
+
+  const formElement = (e.target as HTMLElement).closest(
+    "[data-app='LiveForm']"
+  );
+  if (formElement) {
+    const formData = new FormData(formElement as HTMLFormElement);
+    const url = formElement.getAttribute("action")!;
+
+    const searchParams = new URLSearchParams(formData as any);
+
+    const fullUrl = `${url}?${searchParams.toString()}`;
+
+    const resp = await fetch(fullUrl);
+
+    const body = await resp.text();
+
+    const targetSelector = formElement.getAttribute("data-target")!;
+    const targetElement = formElement.querySelector(targetSelector);
+
+    targetElement!.innerHTML = body;
+  }
+});

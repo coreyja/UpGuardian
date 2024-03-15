@@ -1,7 +1,7 @@
 use std::{fmt::Display, time::Duration};
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     response::{IntoResponse, Redirect},
     Form,
 };
@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use cja::{app_state::AppState as _, server::session::DBSession};
 use maud::{html, Render};
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::types::PgInterval;
 use uuid::Uuid;
 
 use crate::{app_state::AppState, templates::IntoTemplate};
@@ -135,26 +136,100 @@ pub async fn show(
 
       h2 { "Checkins" }
 
-      (graph)
+      form action=(format!("/my/sites/{}/pages/{}/graph", site.site_id, page.page_id)) method="get" data-target=".graph" data-app="LiveForm" {
+        select name="hours" {
+          option value="6" { "6 hours" }
+          option value="12" { "12 hours" }
+          option value="24" { "24 hours" }
+          option value="48" { "48 hours" }
+          option value="168" { "1 week" }
+        }
 
-      ul {
-        @for checkin in checkins {
-          li {
-            (checkin.created_at.format("%d/%m/%Y %H:%M:%S")) " - " (checkin.outcome)
-            @if let Some(status) = checkin.status_code {
-              " - " (status)
-            }
-            @if let Some(duration) = checkin.duration_nanos {
-              @let duration = Duration::from_nanos(duration as u64);
-              " - " (humantime::format_duration(duration))
-            }
-          }
+        div class="graph" {
+          (graph)
         }
       }
     }
     .into_template(state, Some(session))
     .await
     .unwrap()
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GraphQuery {
+    hours: i32,
+}
+
+trait FromHours {
+    fn from_hours(hours: i32) -> Self;
+}
+
+impl FromHours for PgInterval {
+    fn from_hours(hours: i32) -> Self {
+        PgInterval {
+            months: 0,
+            days: hours / 24,
+            microseconds: (hours % 24) as i64 * 60 * 60 * 1_000_000,
+        }
+    }
+}
+
+pub async fn graph(
+    State(state): State<AppState>,
+    Path(PagePath { page_id }): Path<PagePath>,
+    session: DBSession,
+    Query(GraphQuery { hours }): Query<GraphQuery>,
+) -> impl IntoResponse {
+    let interval = PgInterval::from_hours(hours);
+
+    let checkins = sqlx::query_as!(
+        Checkin,
+        r#"
+  SELECT *
+  FROM Checkins
+  WHERE page_id = $1
+  AND now() - created_at <= $2
+  AND duration_nanos is not null
+  ORDER BY created_at DESC
+"#,
+        page_id,
+        interval
+    )
+    .fetch_all(state.db())
+    .await
+    .unwrap();
+
+    let mut checkins_for_graph = checkins.clone();
+    checkins_for_graph.reverse();
+    let graph = SampledCheckinGraph {
+        checkins: checkins_for_graph,
+        number_of_chunks: 20,
+    };
+
+    html! { (graph) }.0
+}
+
+struct CheckinTable(Vec<Checkin>);
+
+impl Render for CheckinTable {
+    fn render(&self) -> maud::Markup {
+        html! {
+          ul {
+            @for checkin in self.0.iter() {
+              li {
+                (checkin.created_at.format("%d/%m/%Y %H:%M:%S")) " - " (checkin.outcome)
+                @if let Some(status) = checkin.status_code {
+                  " - " (status)
+                }
+                @if let Some(duration) = checkin.duration_nanos {
+                  @let duration = Duration::from_nanos(duration as u64);
+                  " - " (humantime::format_duration(duration))
+                }
+              }
+            }
+          }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -495,6 +570,9 @@ where
 
 impl Render for SampledCheckinGraph {
     fn render(&self) -> maud::Markup {
+        if self.checkins.is_empty() {
+            return html! { "No data found" };
+        }
         let full_height = 100;
         let height_padding = 10;
 

@@ -5,7 +5,7 @@ use axum::{
     Router,
 };
 use include_dir::Dir;
-use miette::{IntoDiagnostic as _};
+use miette::IntoDiagnostic as _;
 
 use crate::app_state::AppState;
 
@@ -65,6 +65,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/my/sites/:site_id/pages/:page_id",
             get(current_user::pages::show),
+        )
+        .route(
+            "/my/sites/:site_id/pages/:page_id/graph",
+            get(current_user::pages::graph),
         )
 }
 

@@ -72,7 +72,7 @@ impl IntoResponse for Template {
                                               }
                                               li {
                                                   div."text-xs font-semibold leading-6 text-indigo-200" {
-                                                      "Your teams"
+                                                      "Your sites"
                                                   }
 
                                                   (SidebarSiteList {
