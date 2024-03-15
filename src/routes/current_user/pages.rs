@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{fmt::Display, time::Duration};
 
 use axum::{
     extract::{Path, State},
@@ -123,8 +123,9 @@ pub async fn show(
 
     let mut checkins_for_graph = checkins.clone();
     checkins_for_graph.reverse();
-    let graph = CheckinGraph {
+    let graph = SampledCheckinGraph {
         checkins: checkins_for_graph,
+        number_of_chunks: 10,
     };
 
     html! {
@@ -166,10 +167,16 @@ struct Checkin {
     created_at: DateTime<Utc>,
 }
 
-struct CheckinGraph {
+struct SimpleCheckinGraph {
     checkins: Vec<Checkin>,
 }
 
+struct SampledCheckinGraph {
+    checkins: Vec<Checkin>,
+    number_of_chunks: usize,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct GraphPoint {
     x: f64,
     y: f64,
@@ -182,81 +189,26 @@ struct YAxisLine {
     label: String,
 }
 
-impl Render for YAxisLine {
-    fn render(&self) -> maud::Markup {
-        let Self {
-            width,
-            y_pos,
-            label,
-        } = self;
-
-        html! {
-          path d=(format!("M0 {0} L{width} {0}", y_pos))  fill="none" stroke="blue" stroke-dasharray="2" stroke-width="0.25" {}
-          text x=(0) y=(y_pos) font-size="5" fill="blue" { (label) }
-        }
-    }
+struct SvgPath {
+    points: Vec<(f64, f64)>,
+    stroke_width: f64,
+    path_class: String,
+    stroke_dashed: bool,
 }
 
-impl Render for CheckinGraph {
+impl Render for SvgPath {
     fn render(&self) -> maud::Markup {
-        let full_height = 100;
-        let height_padding = 10;
-
-        let width = 200;
-        let height = full_height - height_padding * 2;
-
-        let min_time = self.checkins.iter().map(|p| p.created_at).min().unwrap();
-        let max_time = self.checkins.iter().map(|p| p.created_at).max().unwrap();
-
-        let total_time = max_time - min_time;
-        let total_time = total_time.to_std().unwrap();
-
-        let min_duration_nanos = self
-            .checkins
-            .iter()
-            .map(|p| p.duration_nanos.unwrap())
-            .min()
-            .unwrap()
-            / 1_000_000
-            * 1_000_000;
-        let min_label =
-            humantime::format_duration(Duration::from_nanos(min_duration_nanos as u64)).to_string();
-
-        let max_duration_nanos = self
-            .checkins
-            .iter()
-            .map(|p| p.duration_nanos.unwrap())
-            .max()
-            .unwrap()
-            / 1_000_000
-            * 1_000_000;
-        let max_label =
-            humantime::format_duration(Duration::from_nanos(max_duration_nanos as u64)).to_string();
-
-        let height_range = max_duration_nanos - min_duration_nanos;
-
-        let points = self
-            .checkins
-            .iter()
-            .map(|p| GraphPoint {
-                x: (((p.created_at - min_time).to_std().unwrap().as_nanos() as f64
-                    / total_time.as_nanos() as f64)
-                    * width as f64),
-                y: ((full_height - height_padding) as f64)
-                    - (((p.duration_nanos.unwrap() as f64 - min_duration_nanos as f64)
-                        / height_range as f64)
-                        * height as f64),
-                label: humantime::format_duration(Duration::from_nanos(
-                    p.duration_nanos.unwrap() as u64
-                ))
-                .to_string(),
-            })
-            .collect::<Vec<_>>();
+        let Self {
+            points,
+            stroke_width,
+            path_class,
+            stroke_dashed,
+        } = self;
 
         let svg_path = points
             .iter()
             .enumerate()
-            .map(|(i, GraphPoint { x, y, .. })| {
+            .map(|(i, (x, y))| {
                 if i == 0 {
                     format!("M{x} {y}")
                 } else {
@@ -267,29 +219,345 @@ impl Render for CheckinGraph {
             .join(" ");
 
         html! {
+          path
+            d=(svg_path)
+            fill="none"
+            class=(path_class)
+            stroke-width=(stroke_width)
+            stroke-dasharray=(if *stroke_dashed { "2" } else { "0" })
+            {}
+        }
+    }
+}
+
+struct SvgPathWithPoints {
+    points: Vec<GraphPoint>,
+    stroke_width: f64,
+    path_class: String,
+    stroke_dashed: bool,
+    point_radius: usize,
+    label_font_size: usize,
+    group_class: String,
+}
+
+impl Render for SvgPathWithPoints {
+    fn render(&self) -> maud::Markup {
+        let Self {
+            point_radius,
+            label_font_size,
+            group_class,
+            points,
+            stroke_width,
+            path_class,
+            stroke_dashed,
+        } = self;
+
+        html! {
+          (SvgPath {
+            points: points.iter().map(|p| (p.x, p.y)).collect(),
+            stroke_width: *stroke_width,
+            path_class: path_class.clone(),
+            stroke_dashed: *stroke_dashed,
+          })
+
+          @for GraphPoint { x, y, label } in points.iter() {
+            g class=(format!("group {group_class}")) {
+              circle cx=(x) cy=(y) r=(point_radius) class="fill-transparent stroke-transparent" {}
+              circle cx=(x) cy=(y) r=(point_radius / 2) {}
+
+              text x=(x) y=(y + 5.0) font-size=(label_font_size) class="hidden group-hover:block" { (label) }
+            }
+          }
+        }
+    }
+}
+
+impl Render for YAxisLine {
+    fn render(&self) -> maud::Markup {
+        let Self {
+            width,
+            y_pos,
+            label,
+        } = self;
+
+        html! {
+          (SvgPath {
+            points: vec![
+              (0.0,*y_pos as f64),
+              (*width as f64, *y_pos as f64),
+            ],
+            stroke_width: 0.25,
+            stroke_dashed: true,
+            path_class: "stroke-blue-500".to_string(),
+          })
+          text x=(0) y=(y_pos) font-size="5" fill="blue" { (label) }
+        }
+    }
+}
+
+trait ToFloat {
+    fn to_f64(&self) -> f64;
+}
+
+impl ToFloat for i64 {
+    fn to_f64(&self) -> f64 {
+        *self as f64
+    }
+}
+
+impl ToFloat for Duration {
+    fn to_f64(&self) -> f64 {
+        self.as_nanos() as f64
+    }
+}
+
+impl ToFloat for chrono::Duration {
+    fn to_f64(&self) -> f64 {
+        self.to_std().unwrap().to_f64()
+    }
+}
+
+fn calculate_range_percentile<T, SubOut>(range: &std::ops::Range<T>, item: T) -> f64
+where
+    T: PartialOrd + std::ops::Sub<Output = SubOut> + Copy + Display,
+    SubOut: ToFloat,
+{
+    calculate_percentile(range.start, range.end, item)
+}
+
+fn calculate_percentile<T, SubOut>(range_start: T, range_end: T, item: T) -> f64
+where
+    T: PartialOrd + std::ops::Sub<Output = SubOut> + Copy + Display,
+    SubOut: ToFloat,
+{
+    if item < range_start || item > range_end {
+        panic!(
+            "Item is not within the range. {} {} {}",
+            item, range_start, range_end
+        );
+    }
+
+    let range_size = range_end - range_start; // +1 to include both ends
+    let position = item - range_start; // Position of item in the range
+
+    // Calculate percentile
+    (position.to_f64()) / (range_size.to_f64())
+}
+
+impl Render for SimpleCheckinGraph {
+    fn render(&self) -> maud::Markup {
+        let full_height = 100;
+        let height_padding = 10;
+
+        let width = 200;
+        let height = full_height - height_padding * 2;
+
+        let min_time = self.checkins.iter().map(|p| p.created_at).min().unwrap();
+        let max_time = self.checkins.iter().map(|p| p.created_at).max().unwrap();
+
+        let x_range = min_time..max_time;
+
+        let min_duration_nanos = self
+            .checkins
+            .iter()
+            .map(|p| p.duration_nanos.unwrap())
+            .min()
+            .unwrap()
+            / 1_000_000
+            * 1_000_000
+            - 1_000_000;
+        let min_label =
+            humantime::format_duration(Duration::from_nanos(min_duration_nanos as u64)).to_string();
+
+        let max_duration_nanos = self
+            .checkins
+            .iter()
+            .map(|p| p.duration_nanos.unwrap())
+            .max()
+            .unwrap()
+            / 1_000_000
+            * 1_000_000
+            + 1_000_000;
+
+        let max_label =
+            humantime::format_duration(Duration::from_nanos(max_duration_nanos as u64)).to_string();
+
+        let y_range = min_duration_nanos..max_duration_nanos;
+
+        let calculate_x =
+            |time: DateTime<Utc>| calculate_range_percentile(&x_range, time) * width as f64;
+
+        let calculate_y = |duration: i64| {
+            height as f64 + height_padding as f64
+                - calculate_range_percentile(&y_range, duration) * height as f64
+        };
+
+        let points = self
+            .checkins
+            .iter()
+            .map(|p| GraphPoint {
+                x: calculate_x(p.created_at),
+                y: calculate_y(p.duration_nanos.unwrap()),
+                label: humantime::format_duration(Duration::from_nanos(
+                    p.duration_nanos.unwrap() as u64
+                ))
+                .to_string(),
+            })
+            .collect::<Vec<_>>();
+
+        html! {
           svg class="w-full" viewBox="0 0 200 100" {
 
-            // y max line
             (YAxisLine { width, y_pos: height_padding, label: format!("Max: {max_label}")})
 
-            // y max line
             (YAxisLine { width, y_pos: full_height - height_padding, label: format!("Min: {min_label}")})
 
-            // This is the actual point line
-            path d=(svg_path) fill="none" stroke="black" {}
+            (SvgPathWithPoints {
+              points,
+              stroke_width: 0.5,
+              path_class: "stroke-black".to_string(),
+              stroke_dashed: false,
+              point_radius: 2,
+              label_font_size: 4,
+              group_class: "hover:fill-red-500".to_string(),
+            })
+          }
+        }
+    }
+}
 
-            @for GraphPoint { x, y, label } in points.iter() {
-              // Group for Hover State
-              g class="group"  {
-                // Invisible Circle to make hover state bigger
-                circle cx=(x) cy=(y) r=(4) class="fill-transparent stroke-transparent" {}
-                // Point on line
-                circle cx=(x) cy=(y) r=(2) class="group-hover:fill-red-500" {}
+fn transpose<X, Y, Z>(vec: Vec<(X, Y, Z)>) -> (Vec<X>, Vec<Y>, Vec<Z>)
+where
+    X: Clone,
+    Y: Clone,
+    Z: Clone,
+{
+    vec.into_iter().fold(
+        (Vec::new(), Vec::new(), Vec::new()),
+        |(mut v1, mut v2, mut v3), (e1, e2, e3)| {
+            v1.push(e1);
+            v2.push(e2);
+            v3.push(e3);
+            (v1, v2, v3)
+        },
+    )
+}
 
-                // Label, hidden till group hover
-                text x=(x) y=(y + 5.0) font-size=4 class="hidden group-hover:block fill-red-500" { (label) }
-              }
-            }
+impl Render for SampledCheckinGraph {
+    fn render(&self) -> maud::Markup {
+        let full_height = 100;
+        let height_padding = 10;
+
+        let width = 200;
+        let height = full_height - height_padding * 2;
+
+        let min_time = self.checkins.iter().map(|p| p.created_at).min().unwrap();
+        let max_time = self.checkins.iter().map(|p| p.created_at).max().unwrap();
+
+        let x_range = min_time..max_time;
+
+        let min_duration_nanos = self
+            .checkins
+            .iter()
+            .map(|p| p.duration_nanos.unwrap())
+            .min()
+            .unwrap()
+            / 1_000_000
+            * 1_000_000
+            - 1_000_000;
+        let min_label =
+            humantime::format_duration(Duration::from_nanos(min_duration_nanos as u64)).to_string();
+
+        let max_duration_nanos = self
+            .checkins
+            .iter()
+            .map(|p| p.duration_nanos.unwrap())
+            .max()
+            .unwrap()
+            / 1_000_000
+            * 1_000_000
+            + 1_000_000;
+
+        let max_label =
+            humantime::format_duration(Duration::from_nanos(max_duration_nanos as u64)).to_string();
+
+        let y_range = min_duration_nanos..max_duration_nanos;
+
+        let calculate_x =
+            |time: DateTime<Utc>| calculate_range_percentile(&x_range, time) * width as f64;
+
+        let calculate_y = |duration: i64| {
+            height as f64 + height_padding as f64
+                - calculate_range_percentile(&y_range, duration) * height as f64
+        };
+
+        let total_count = self.checkins.len();
+
+        let chunk_size = (total_count / self.number_of_chunks).max(1);
+        let chunks = self.checkins.chunks(chunk_size);
+
+        let min_avg_max: Vec<((f64, f64), GraphPoint, (f64, f64))> = chunks
+            .map(|chunk| {
+                let min = chunk
+                    .iter()
+                    .map(|p| p.duration_nanos.unwrap())
+                    .min()
+                    .unwrap();
+                let max = chunk
+                    .iter()
+                    .map(|p| p.duration_nanos.unwrap())
+                    .max()
+                    .unwrap();
+                let avg = chunk.iter().map(|p| p.duration_nanos.unwrap()).sum::<i64>()
+                    / chunk.len() as i64;
+
+                let x = calculate_x(chunk[chunk.len() / 2].created_at);
+
+                (
+                    (x, calculate_y(min)),
+                    GraphPoint {
+                        x,
+                        y: calculate_y(avg),
+                        label: humantime::format_duration(Duration::from_nanos(avg as u64))
+                            .to_string(),
+                    },
+                    (x, calculate_y(max)),
+                )
+            })
+            .collect();
+
+        let (min, avg, max) = transpose(min_avg_max);
+
+        html! {
+          svg class="w-full" viewBox="0 0 200 100" {
+
+            (YAxisLine { width, y_pos: height_padding, label: format!("Max: {max_label}")})
+
+            (YAxisLine { width, y_pos: full_height - height_padding, label: format!("Min: {min_label}")})
+
+            (SvgPath {
+              points: min,
+              stroke_width: 0.25,
+              path_class: "stroke-black".to_string(),
+              stroke_dashed: true,
+            })
+
+            (SvgPathWithPoints {
+              points: avg,
+              stroke_width: 0.5,
+              path_class: "stroke-blue-500".to_string(),
+              stroke_dashed: false,
+              point_radius: 2,
+              label_font_size: 4,
+              group_class: "hover:fill-red-500".to_string(),
+            })
+
+            (SvgPath {
+              points: max,
+              stroke_width: 0.25,
+              path_class: "stroke-black".to_string(),
+              stroke_dashed: true,
+            })
           }
         }
     }
