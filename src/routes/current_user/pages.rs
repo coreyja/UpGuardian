@@ -125,7 +125,7 @@ pub async fn show(
     checkins_for_graph.reverse();
     let graph = SampledCheckinGraph {
         checkins: checkins_for_graph,
-        number_of_chunks: 10,
+        number_of_chunks: 20,
     };
 
     html! {
