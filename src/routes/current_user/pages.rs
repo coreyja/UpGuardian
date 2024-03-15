@@ -252,6 +252,31 @@ impl Render for SvgPathWithPoints {
             stroke_dashed,
         } = self;
 
+        let length = points.len();
+
+        let x_min = points
+            .iter()
+            .map(|p| p.x)
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        let x_max = points
+            .iter()
+            .map(|p| p.x)
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        let x_midpoint = (x_min + x_max) / 2.0;
+
+        let left_side = points
+            .iter()
+            .filter(|p| p.x <= x_midpoint)
+            .collect::<Vec<_>>();
+        let right_side = points
+            .iter()
+            .filter(|p| p.x > x_midpoint)
+            .collect::<Vec<_>>();
+
+        assert_eq!(points.len(), left_side.len() + right_side.len());
+
         html! {
           (SvgPath {
             points: points.iter().map(|p| (p.x, p.y)).collect(),
@@ -260,12 +285,39 @@ impl Render for SvgPathWithPoints {
             stroke_dashed: *stroke_dashed,
           })
 
-          @for GraphPoint { x, y, label } in points.iter() {
+          @for GraphPoint { x, y, label } in left_side.iter().rev() {
             g class=(format!("group {group_class}")) {
               circle cx=(x) cy=(y) r=(point_radius) class="fill-transparent stroke-transparent" {}
               circle cx=(x) cy=(y) r=(point_radius / 2) {}
 
-              text x=(x) y=(y + 5.0) font-size=(label_font_size) class="hidden group-hover:block" { (label) }
+              text
+                x=(x)
+                y=(y + 5.0)
+                font-size=(label_font_size)
+                stroke-width="1em"
+                stroke-linejoin="round"
+                paint-order="stroke"
+                text-anchor="start"
+                class="hidden group-hover:block stroke-white"
+                { (label) }
+            }
+          }
+
+          @for GraphPoint { x, y, label } in right_side.iter() {
+            g class=(format!("group {group_class}")) {
+              circle cx=(x) cy=(y) r=(point_radius) class="fill-transparent stroke-transparent" {}
+              circle cx=(x) cy=(y) r=(point_radius / 2) {}
+
+              text
+                x=(x)
+                y=(y + 5.0)
+                font-size=(label_font_size)
+                stroke-width="1em"
+                stroke-linejoin="round"
+                paint-order="stroke"
+                text-anchor="end"
+                class="hidden group-hover:block stroke-white"
+                { (label) }
             }
           }
         }
@@ -542,6 +594,13 @@ impl Render for SampledCheckinGraph {
               stroke_dashed: true,
             })
 
+            (SvgPath {
+              points: max,
+              stroke_width: 0.25,
+              path_class: "stroke-black".to_string(),
+              stroke_dashed: true,
+            })
+
             (SvgPathWithPoints {
               points: avg,
               stroke_width: 0.5,
@@ -550,13 +609,6 @@ impl Render for SampledCheckinGraph {
               point_radius: 2,
               label_font_size: 4,
               group_class: "hover:fill-red-500".to_string(),
-            })
-
-            (SvgPath {
-              points: max,
-              stroke_width: 0.25,
-              path_class: "stroke-black".to_string(),
-              stroke_dashed: true,
             })
           }
         }
