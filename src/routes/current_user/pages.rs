@@ -123,8 +123,9 @@ pub async fn show(
 
     let mut checkins_for_graph = checkins.clone();
     checkins_for_graph.reverse();
-    let graph = CheckinGraph {
+    let graph = SampledCheckinGraph {
         checkins: checkins_for_graph,
+        number_of_chunks: 10,
     };
 
     html! {
@@ -166,10 +167,16 @@ struct Checkin {
     created_at: DateTime<Utc>,
 }
 
-struct CheckinGraph {
+struct SimpleCheckinGraph {
     checkins: Vec<Checkin>,
 }
 
+struct SampledCheckinGraph {
+    checkins: Vec<Checkin>,
+    number_of_chunks: usize,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct GraphPoint {
     x: f64,
     y: f64,
@@ -337,7 +344,7 @@ where
     (position.to_f64()) / (range_size.to_f64())
 }
 
-impl Render for CheckinGraph {
+impl Render for SimpleCheckinGraph {
     fn render(&self) -> maud::Markup {
         let full_height = 100;
         let height_padding = 10;
@@ -413,6 +420,143 @@ impl Render for CheckinGraph {
               point_radius: 2,
               label_font_size: 4,
               group_class: "hover:fill-red-500".to_string(),
+            })
+          }
+        }
+    }
+}
+
+fn transpose<X, Y, Z>(vec: Vec<(X, Y, Z)>) -> (Vec<X>, Vec<Y>, Vec<Z>)
+where
+    X: Clone,
+    Y: Clone,
+    Z: Clone,
+{
+    vec.into_iter().fold(
+        (Vec::new(), Vec::new(), Vec::new()),
+        |(mut v1, mut v2, mut v3), (e1, e2, e3)| {
+            v1.push(e1);
+            v2.push(e2);
+            v3.push(e3);
+            (v1, v2, v3)
+        },
+    )
+}
+
+impl Render for SampledCheckinGraph {
+    fn render(&self) -> maud::Markup {
+        let full_height = 100;
+        let height_padding = 10;
+
+        let width = 200;
+        let height = full_height - height_padding * 2;
+
+        let min_time = self.checkins.iter().map(|p| p.created_at).min().unwrap();
+        let max_time = self.checkins.iter().map(|p| p.created_at).max().unwrap();
+
+        let x_range = min_time..max_time;
+
+        let min_duration_nanos = self
+            .checkins
+            .iter()
+            .map(|p| p.duration_nanos.unwrap())
+            .min()
+            .unwrap()
+            / 1_000_000
+            * 1_000_000
+            - 1_000_000;
+        let min_label =
+            humantime::format_duration(Duration::from_nanos(min_duration_nanos as u64)).to_string();
+
+        let max_duration_nanos = self
+            .checkins
+            .iter()
+            .map(|p| p.duration_nanos.unwrap())
+            .max()
+            .unwrap()
+            / 1_000_000
+            * 1_000_000
+            + 1_000_000;
+
+        let max_label =
+            humantime::format_duration(Duration::from_nanos(max_duration_nanos as u64)).to_string();
+
+        let y_range = min_duration_nanos..max_duration_nanos;
+
+        let calculate_x =
+            |time: DateTime<Utc>| calculate_range_percentile(&x_range, time) * width as f64;
+
+        let calculate_y = |duration: i64| {
+            height as f64 + height_padding as f64
+                - calculate_range_percentile(&y_range, duration) * height as f64
+        };
+
+        let total_count = self.checkins.len();
+
+        let chunk_size = (total_count / self.number_of_chunks).max(1);
+        let chunks = self.checkins.chunks(chunk_size);
+
+        let min_avg_max: Vec<((f64, f64), GraphPoint, (f64, f64))> = chunks
+            .map(|chunk| {
+                let min = chunk
+                    .iter()
+                    .map(|p| p.duration_nanos.unwrap())
+                    .min()
+                    .unwrap();
+                let max = chunk
+                    .iter()
+                    .map(|p| p.duration_nanos.unwrap())
+                    .max()
+                    .unwrap();
+                let avg = chunk.iter().map(|p| p.duration_nanos.unwrap()).sum::<i64>()
+                    / chunk.len() as i64;
+
+                let x = calculate_x(chunk[chunk.len() / 2].created_at);
+
+                (
+                    (x, calculate_y(min)),
+                    GraphPoint {
+                        x,
+                        y: calculate_y(avg),
+                        label: humantime::format_duration(Duration::from_nanos(avg as u64))
+                            .to_string(),
+                    },
+                    (x, calculate_y(max)),
+                )
+            })
+            .collect();
+
+        let (min, avg, max) = transpose(min_avg_max);
+
+        html! {
+          svg class="w-full" viewBox="0 0 200 100" {
+
+            (YAxisLine { width, y_pos: height_padding, label: format!("Max: {max_label}")})
+
+            (YAxisLine { width, y_pos: full_height - height_padding, label: format!("Min: {min_label}")})
+
+            (SvgPath {
+              points: min,
+              stroke_width: 0.25,
+              path_class: "stroke-black".to_string(),
+              stroke_dashed: true,
+            })
+
+            (SvgPathWithPoints {
+              points: avg,
+              stroke_width: 0.5,
+              path_class: "stroke-blue-500".to_string(),
+              stroke_dashed: false,
+              point_radius: 2,
+              label_font_size: 4,
+              group_class: "hover:fill-red-500".to_string(),
+            })
+
+            (SvgPath {
+              points: max,
+              stroke_width: 0.25,
+              path_class: "stroke-black".to_string(),
+              stroke_dashed: true,
             })
           }
         }
