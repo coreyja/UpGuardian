@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    SELECT Checkins.*\n    FROM Checkins\n    JOIN Pages using (page_id)\n    WHERE Pages.site_id = $1 AND\n          now() - Checkins.created_at < $2\n    ORDER BY Checkins.created_at DESC\n  ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "checkin_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "page_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "outcome",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "duration_nanos",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Interval"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "e9d6f6ec74438bd953a17bb328f3ea012fa56cbf3dcad3cc37f1e4f2395f09d1"
+}

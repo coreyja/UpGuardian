@@ -1,19 +1,27 @@
+use std::{fmt::Display, ops::Neg};
+
 use axum::{
     extract::{FromRequestParts, Path, State},
-    http::request::Parts,
+    http::{request::Parts, response},
     response::{IntoResponse, Redirect},
     Form,
 };
 
+use chrono::Duration;
 use cja::{
     app_state::AppState as _,
     server::session::{DBSession, SessionRedirect},
 };
 use maud::{html, Render};
 use serde::Deserialize as _;
+use sqlx::postgres::types::PgInterval;
 use uuid::Uuid;
 
-use crate::{app_state::AppState, templates::IntoTemplate};
+use crate::{
+    app_state::AppState,
+    routes::current_user::pages::{self, Checkin},
+    templates::IntoTemplate,
+};
 use crate::{routes::current_user::pages::Page, templates::Template};
 
 struct SiteTableRow {
@@ -288,6 +296,8 @@ pub async fn show(site: Site, State(state): State<AppState>, session: DBSession)
 
       a href=(format!("https://{}", site.domain)) rel="noopener" { "Visit Site" }
 
+      (site_stats_overview(&site, &pages, &state).await)
+
       h2 { "Pages" }
 
       a href=(format!("/my/sites/{}/pages/new", site.site_id)) { "Create a new page" }
@@ -305,4 +315,245 @@ pub async fn show(site: Site, State(state): State<AppState>, session: DBSession)
     .into_template(state, Some(session))
     .await
     .unwrap()
+}
+
+struct Change {
+    value: String,
+    diff: Diff,
+    emotion: Emotion,
+}
+
+enum Diff {
+    Increase,
+    Decrease,
+}
+
+enum Emotion {
+    Happy,
+    Sad,
+}
+
+impl Change {
+    fn icon_class(&self) -> &'static str {
+        match self.diff {
+            Diff::Increase => "fa-arrow-up",
+            Diff::Decrease => "fa-arrow-down",
+        }
+    }
+
+    fn screen_reader_text(&self) -> &'static str {
+        match self.diff {
+            Diff::Increase => "Increased by",
+            Diff::Decrease => "Decreased by",
+        }
+    }
+}
+
+impl Emotion {
+    fn color_class(&self) -> &'static str {
+        match self {
+            Emotion::Happy => "text-green-600",
+            Emotion::Sad => "text-red-600",
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+enum IconStyle {
+    Solid,
+    Regular,
+    Light,
+}
+
+impl Display for IconStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IconStyle::Solid => write!(f, "fa-solid"),
+            IconStyle::Regular => write!(f, "fa-regular"),
+            IconStyle::Light => write!(f, "fa-light"),
+        }
+    }
+}
+
+fn icon(icon_class: &str, style: IconStyle) -> maud::Markup {
+    html! {
+      i class=(format!("{icon_class} {style}")) {}
+    }
+}
+
+fn single_stat<S: std::fmt::Display>(
+    title: &str,
+    stat: S,
+    change: Option<Change>,
+    icon_class: &str,
+) -> maud::Markup {
+    html! {
+      div."relative overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:px-6 sm:pt-6" {
+        dt {
+            div."absolute rounded-md bg-indigo-500 p-3" {
+                (icon(&format!("text-white fa-fw {icon_class}"), IconStyle::Solid))
+            }
+            p."ml-16 truncate text-sm font-medium text-gray-500" {
+                (title)
+            }
+        }
+        dd."ml-16 flex items-baseline" {
+            p."text-2xl font-semibold text-gray-900" {
+              (stat)
+            }
+            @if let Some(change) = change {
+              (change)
+            }
+        }
+      }
+    }
+}
+
+impl Render for Change {
+    fn render(&self) -> maud::Markup {
+        html! {
+            p class=(format!("ml-2 flex items-baseline text-sm font-semibold {}", self.emotion.color_class())) {
+                (icon(&format!("h-5 w-5 fa-fw {}", self.icon_class()), IconStyle::Solid))
+                span."sr-only" {
+                    (self.screen_reader_text())
+                }
+                (self.value)
+            }
+        }
+    }
+}
+
+fn chrono_to_pg_interval(duration: Duration) -> PgInterval {
+    let std = duration.to_std().unwrap();
+    std.try_into().unwrap()
+}
+
+async fn site_stats_overview(site: &Site, pages: &[Page], state: &AppState) -> maud::Markup {
+    let pages_tracked = pages.len();
+
+    let recent_duration = chrono::Duration::days(30);
+
+    let all_interval = chrono_to_pg_interval(recent_duration * 2);
+    let all_checkins = sqlx::query_as!(
+        Checkin,
+        r#"
+    SELECT Checkins.*
+    FROM Checkins
+    JOIN Pages using (page_id)
+    WHERE Pages.site_id = $1 AND
+          now() - Checkins.created_at < $2
+    ORDER BY Checkins.created_at DESC
+  "#,
+        site.site_id,
+        all_interval
+    )
+    .fetch_all(state.db())
+    .await
+    .unwrap();
+    let split_point = all_checkins
+        .iter()
+        .position(|checkin| checkin.created_at < chrono::Utc::now() - recent_duration)
+        .unwrap_or(all_checkins.len());
+
+    let mut new_checkins = all_checkins;
+    let old_checkins = new_checkins.split_off(split_point);
+    let new_checkins = new_checkins;
+
+    let avg_response_time = avg_response_time_for_checkins(&new_checkins);
+
+    let response_time_change = if old_checkins.is_empty() {
+        None
+    } else {
+        let old_response_time = avg_response_time_for_checkins(&old_checkins);
+
+        let response_time_change = old_response_time - avg_response_time;
+        let response_time_change = response_time_change / old_response_time * 100.0;
+
+        let response_time_abs_change = response_time_change.abs();
+        let response_time_formatted = format!("{:.1}%", response_time_abs_change);
+
+        if response_time_change.abs() < 0.00001 {
+            None
+        } else {
+            let (diff, emotion) = if response_time_change.is_sign_positive() {
+                (Diff::Increase, Emotion::Sad)
+            } else {
+                (Diff::Decrease, Emotion::Happy)
+            };
+            let response_time_change = Change {
+                value: response_time_formatted,
+                diff,
+                emotion,
+            };
+
+            Some(response_time_change)
+        }
+    };
+
+    let avg_response_time = format!("{:.1} ms", avg_response_time);
+
+    let succesful_percent = success_percent_for_checkins(&new_checkins);
+    let successful_percent_change = if old_checkins.is_empty() || new_checkins.is_empty() {
+        None
+    } else {
+        let old_succesful_percent = success_percent_for_checkins(&old_checkins);
+
+        let succesful_percent_change = old_succesful_percent - succesful_percent;
+        if succesful_percent_change.abs() < 0.00001 {
+            None
+        } else {
+            let succesful_change_formatted = format!("{:.1}%", succesful_percent_change.abs());
+            let (diff, emotion) = if succesful_percent_change.is_sign_positive() {
+                (Diff::Increase, Emotion::Happy)
+            } else {
+                (Diff::Decrease, Emotion::Sad)
+            };
+            let successful_percent_change = Change {
+                value: succesful_change_formatted,
+                diff,
+                emotion,
+            };
+            Some(successful_percent_change)
+        }
+    };
+    let succesful_percent = format!("{:.1}%", succesful_percent);
+
+    html! {
+        div {
+            h3."text-base font-semibold leading-6 text-gray-900" {
+                "Last 30 days"
+            }
+            (new_checkins.len())
+            dl."mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" {
+                (
+                  single_stat("Pages Tracked", pages_tracked, None, "fa-file")
+                )
+                (
+                  single_stat("Avg. Response Time", avg_response_time, response_time_change, "fa-clock")
+                )
+                (
+                  single_stat("Success Rate", succesful_percent, successful_percent_change, "fa-check")
+                )
+            }
+        }
+    }
+}
+
+fn success_percent_for_checkins(checkins: &[Checkin]) -> f64 {
+    let count_successful = checkins
+        .iter()
+        .filter(|checkin| checkin.outcome == "success")
+        .count();
+
+    count_successful as f64 / checkins.len() as f64 * 100.0
+}
+
+fn avg_response_time_for_checkins(checkins: &[Checkin]) -> f64 {
+    let total_nanos = checkins
+        .iter()
+        .filter_map(|checkin| checkin.duration_nanos)
+        .sum::<i64>();
+    let total_millis = total_nanos as f64 / 1_000_000.0;
+
+    total_millis / checkins.len() as f64
 }

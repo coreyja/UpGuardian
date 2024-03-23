@@ -160,7 +160,7 @@ pub struct GraphQuery {
     hours: i32,
 }
 
-trait FromHours {
+pub trait FromHours {
     fn from_hours(hours: i32) -> Self;
 }
 
@@ -233,13 +233,13 @@ impl Render for CheckinTable {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Checkin {
-    checkin_id: Uuid,
-    page_id: Uuid,
-    outcome: String,
-    status_code: Option<i32>,
-    duration_nanos: Option<i64>,
-    created_at: DateTime<Utc>,
+pub struct Checkin {
+    pub checkin_id: Uuid,
+    pub page_id: Uuid,
+    pub outcome: String,
+    pub status_code: Option<i32>,
+    pub duration_nanos: Option<i64>,
+    pub created_at: DateTime<Utc>,
 }
 
 struct SimpleCheckinGraph {
