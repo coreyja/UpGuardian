@@ -177,7 +177,7 @@ impl FromHours for PgInterval {
 pub async fn graph(
     State(state): State<AppState>,
     Path(PagePath { page_id }): Path<PagePath>,
-    session: DBSession,
+    _session: DBSession,
     Query(GraphQuery { hours }): Query<GraphQuery>,
 ) -> impl IntoResponse {
     let interval = PgInterval::from_hours(hours);

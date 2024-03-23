@@ -1,8 +1,8 @@
-use std::{fmt::Display, ops::Neg};
+use std::{fmt::Display};
 
 use axum::{
     extract::{FromRequestParts, Path, State},
-    http::{request::Parts, response},
+    http::{request::Parts},
     response::{IntoResponse, Redirect},
     Form,
 };
@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
-    routes::current_user::pages::{self, Checkin},
+    routes::current_user::pages::{Checkin},
     templates::IntoTemplate,
 };
 use crate::{routes::current_user::pages::Page, templates::Template};
