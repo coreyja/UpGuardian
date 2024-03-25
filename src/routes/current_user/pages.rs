@@ -222,7 +222,7 @@ pub async fn refresh(
     Query(GraphQuery { hours }): Query<GraphQuery>,
 ) -> impl IntoResponse {
     let recent_duration = chrono::Duration::hours(hours.into());
-    let interval = chrono_to_pg_interval(recent_duration);
+    let interval = chrono_to_pg_interval(recent_duration * 2);
 
     let all_checkins = sqlx::query_as!(
         Checkin,
