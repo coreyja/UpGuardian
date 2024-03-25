@@ -1,8 +1,8 @@
-use std::{fmt::Display};
+use std::fmt::Display;
 
 use axum::{
     extract::{FromRequestParts, Path, State},
-    http::{request::Parts},
+    http::request::Parts,
     response::{IntoResponse, Redirect},
     Form,
 };
@@ -17,11 +17,7 @@ use serde::Deserialize as _;
 use sqlx::postgres::types::PgInterval;
 use uuid::Uuid;
 
-use crate::{
-    app_state::AppState,
-    routes::current_user::pages::{Checkin},
-    templates::IntoTemplate,
-};
+use crate::{app_state::AppState, routes::current_user::pages::Checkin, templates::IntoTemplate};
 use crate::{routes::current_user::pages::Page, templates::Template};
 
 struct SiteTableRow {
@@ -317,18 +313,18 @@ pub async fn show(site: Site, State(state): State<AppState>, session: DBSession)
     .unwrap()
 }
 
-struct Change {
+pub struct Change {
     value: String,
     diff: Diff,
     emotion: Emotion,
 }
 
-enum Diff {
+pub enum Diff {
     Increase,
     Decrease,
 }
 
-enum Emotion {
+pub enum Emotion {
     Happy,
     Sad,
 }
@@ -359,7 +355,7 @@ impl Emotion {
 }
 
 #[derive(Copy, Clone)]
-enum IconStyle {
+pub enum IconStyle {
     Solid,
     Regular,
     Light,
@@ -375,13 +371,13 @@ impl Display for IconStyle {
     }
 }
 
-fn icon(icon_class: &str, style: IconStyle) -> maud::Markup {
+pub fn icon(icon_class: &str, style: IconStyle) -> maud::Markup {
     html! {
       i class=(format!("{icon_class} {style}")) {}
     }
 }
 
-fn single_stat<S: std::fmt::Display>(
+pub fn single_stat<S: std::fmt::Display>(
     title: &str,
     stat: S,
     change: Option<Change>,
@@ -423,7 +419,7 @@ impl Render for Change {
     }
 }
 
-fn chrono_to_pg_interval(duration: Duration) -> PgInterval {
+pub fn chrono_to_pg_interval(duration: Duration) -> PgInterval {
     let std = duration.to_std().unwrap();
     std.try_into().unwrap()
 }
@@ -461,10 +457,75 @@ async fn site_stats_overview(site: &Site, pages: &[Page], state: &AppState) -> m
 
     let avg_response_time = avg_response_time_for_checkins(&new_checkins);
 
+    let response_time_change = calculate_response_time_change(&old_checkins, avg_response_time);
+
+    let avg_response_time = format!("{:.1} ms", avg_response_time);
+
+    let succesful_percent = success_percent_for_checkins(&new_checkins);
+    let successful_percent_change =
+        calculate_percentile_change(old_checkins, &new_checkins, succesful_percent);
+    let succesful_percent = format!("{:.1}%", succesful_percent);
+
+    html! {
+        div {
+            h3."text-base font-semibold leading-6 text-gray-900" {
+                "Last 30 days"
+            }
+            (new_checkins.len())
+            dl."mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" {
+                (
+                  single_stat("Pages Tracked", pages_tracked, None, "fa-file")
+                )
+                (
+                  single_stat("Avg. Response Time", avg_response_time, response_time_change, "fa-clock")
+                )
+                (
+                  single_stat("Success Rate", succesful_percent, successful_percent_change, "fa-check")
+                )
+            }
+        }
+    }
+}
+
+pub fn calculate_percentile_change(
+    old_checkins: Vec<Checkin>,
+    new_checkins: &Vec<Checkin>,
+    succesful_percent: f64,
+) -> Option<Change> {
+    let successful_percent_change = if old_checkins.is_empty() || new_checkins.is_empty() {
+        None
+    } else {
+        let old_succesful_percent = success_percent_for_checkins(&old_checkins);
+
+        let succesful_percent_change = old_succesful_percent - succesful_percent;
+        if succesful_percent_change.abs() < 0.00001 {
+            None
+        } else {
+            let succesful_change_formatted = format!("{:.1}%", succesful_percent_change.abs());
+            let (diff, emotion) = if succesful_percent_change.is_sign_positive() {
+                (Diff::Increase, Emotion::Happy)
+            } else {
+                (Diff::Decrease, Emotion::Sad)
+            };
+            let successful_percent_change = Change {
+                value: succesful_change_formatted,
+                diff,
+                emotion,
+            };
+            Some(successful_percent_change)
+        }
+    };
+    successful_percent_change
+}
+
+pub fn calculate_response_time_change(
+    old_checkins: &Vec<Checkin>,
+    avg_response_time: f64,
+) -> Option<Change> {
     let response_time_change = if old_checkins.is_empty() {
         None
     } else {
-        let old_response_time = avg_response_time_for_checkins(&old_checkins);
+        let old_response_time = avg_response_time_for_checkins(old_checkins);
 
         let response_time_change = old_response_time - avg_response_time;
         let response_time_change = response_time_change / old_response_time * 100.0;
@@ -489,57 +550,10 @@ async fn site_stats_overview(site: &Site, pages: &[Page], state: &AppState) -> m
             Some(response_time_change)
         }
     };
-
-    let avg_response_time = format!("{:.1} ms", avg_response_time);
-
-    let succesful_percent = success_percent_for_checkins(&new_checkins);
-    let successful_percent_change = if old_checkins.is_empty() || new_checkins.is_empty() {
-        None
-    } else {
-        let old_succesful_percent = success_percent_for_checkins(&old_checkins);
-
-        let succesful_percent_change = old_succesful_percent - succesful_percent;
-        if succesful_percent_change.abs() < 0.00001 {
-            None
-        } else {
-            let succesful_change_formatted = format!("{:.1}%", succesful_percent_change.abs());
-            let (diff, emotion) = if succesful_percent_change.is_sign_positive() {
-                (Diff::Increase, Emotion::Happy)
-            } else {
-                (Diff::Decrease, Emotion::Sad)
-            };
-            let successful_percent_change = Change {
-                value: succesful_change_formatted,
-                diff,
-                emotion,
-            };
-            Some(successful_percent_change)
-        }
-    };
-    let succesful_percent = format!("{:.1}%", succesful_percent);
-
-    html! {
-        div {
-            h3."text-base font-semibold leading-6 text-gray-900" {
-                "Last 30 days"
-            }
-            (new_checkins.len())
-            dl."mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" {
-                (
-                  single_stat("Pages Tracked", pages_tracked, None, "fa-file")
-                )
-                (
-                  single_stat("Avg. Response Time", avg_response_time, response_time_change, "fa-clock")
-                )
-                (
-                  single_stat("Success Rate", succesful_percent, successful_percent_change, "fa-check")
-                )
-            }
-        }
-    }
+    response_time_change
 }
 
-fn success_percent_for_checkins(checkins: &[Checkin]) -> f64 {
+pub fn success_percent_for_checkins(checkins: &[Checkin]) -> f64 {
     let count_successful = checkins
         .iter()
         .filter(|checkin| checkin.outcome == "success")
@@ -548,7 +562,7 @@ fn success_percent_for_checkins(checkins: &[Checkin]) -> f64 {
     count_successful as f64 / checkins.len() as f64 * 100.0
 }
 
-fn avg_response_time_for_checkins(checkins: &[Checkin]) -> f64 {
+pub fn avg_response_time_for_checkins(checkins: &[Checkin]) -> f64 {
     let total_nanos = checkins
         .iter()
         .filter_map(|checkin| checkin.duration_nanos)

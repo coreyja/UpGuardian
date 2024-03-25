@@ -12,9 +12,14 @@ use serde::{Deserialize, Serialize};
 use sqlx::postgres::types::PgInterval;
 use uuid::Uuid;
 
-use crate::{app_state::AppState, templates::IntoTemplate};
+use crate::{
+    app_state::AppState, routes::current_user::sites::single_stat, templates::IntoTemplate,
+};
 
-use super::sites::Site;
+use super::sites::{
+    avg_response_time_for_checkins, calculate_percentile_change, calculate_response_time_change,
+    chrono_to_pg_interval, success_percent_for_checkins, Site,
+};
 
 pub async fn new(
     site: Site,
@@ -106,13 +111,13 @@ pub async fn show(
     .await
     .unwrap();
 
-    let checkins = sqlx::query_as!(
+    let all_checkins = sqlx::query_as!(
         Checkin,
         r#"
       SELECT *
       FROM Checkins
       WHERE page_id = $1
-      AND created_at >= now() - INTERVAL '6 hours'
+      AND created_at >= now() - INTERVAL '12 hours'
       AND duration_nanos is not null
       ORDER BY created_at DESC
     "#,
@@ -121,8 +126,28 @@ pub async fn show(
     .fetch_all(state.db())
     .await
     .unwrap();
+    let recent_duration = chrono::Duration::hours(6);
+    let split_point = all_checkins
+        .iter()
+        .position(|checkin| checkin.created_at < chrono::Utc::now() - recent_duration)
+        .unwrap_or(all_checkins.len());
 
-    let mut checkins_for_graph = checkins.clone();
+    let mut new_checkins = all_checkins;
+    let old_checkins = new_checkins.split_off(split_point);
+    let new_checkins = new_checkins;
+
+    let avg_response_time = avg_response_time_for_checkins(&new_checkins);
+
+    let response_time_change = calculate_response_time_change(&old_checkins, avg_response_time);
+
+    let avg_response_time = format!("{:.1} ms", avg_response_time);
+
+    let succesful_percent = success_percent_for_checkins(&new_checkins);
+    let successful_percent_change =
+        calculate_percentile_change(old_checkins, &new_checkins, succesful_percent);
+    let succesful_percent = format!("{:.1}%", succesful_percent);
+
+    let mut checkins_for_graph = new_checkins.clone();
     checkins_for_graph.reverse();
     let graph = SampledCheckinGraph {
         checkins: checkins_for_graph,
@@ -136,7 +161,7 @@ pub async fn show(
 
       h2 { "Checkins" }
 
-      form action=(format!("/my/sites/{}/pages/{}/graph", site.site_id, page.page_id)) method="get" data-target=".graph" data-app="LiveForm" {
+      form action=(format!("/my/sites/{}/pages/{}/refresh", site.site_id, page.page_id)) method="get" data-target=".refresh" data-app="LiveForm" {
         select name="hours" {
           option value="6" { "6 hours" }
           option value="12" { "12 hours" }
@@ -145,9 +170,25 @@ pub async fn show(
           option value="168" { "1 week" }
         }
 
-        div class="graph" {
-          (graph)
+        div class="refresh" {
+
+            dl."mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" {
+                (
+                single_stat("# of Checkins", new_checkins.len(), None, "fa-file")
+                )
+                (
+                single_stat("Avg. Response Time", avg_response_time, response_time_change, "fa-clock")
+                )
+                (
+                single_stat("Success Rate", succesful_percent, successful_percent_change, "fa-check")
+                )
+            }
+
+            div class="graph" {
+            (graph)
+            }
         }
+
       }
     }
     .into_template(state, Some(session))
@@ -174,15 +215,16 @@ impl FromHours for PgInterval {
     }
 }
 
-pub async fn graph(
+pub async fn refresh(
     State(state): State<AppState>,
     Path(PagePath { page_id }): Path<PagePath>,
     _session: DBSession,
     Query(GraphQuery { hours }): Query<GraphQuery>,
 ) -> impl IntoResponse {
-    let interval = PgInterval::from_hours(hours);
+    let recent_duration = chrono::Duration::hours(hours.into());
+    let interval = chrono_to_pg_interval(recent_duration);
 
-    let checkins = sqlx::query_as!(
+    let all_checkins = sqlx::query_as!(
         Checkin,
         r#"
   SELECT *
@@ -198,15 +240,52 @@ pub async fn graph(
     .fetch_all(state.db())
     .await
     .unwrap();
+    let split_point = all_checkins
+        .iter()
+        .position(|checkin| checkin.created_at < chrono::Utc::now() - recent_duration)
+        .unwrap_or(all_checkins.len());
 
-    let mut checkins_for_graph = checkins.clone();
+    let mut new_checkins = all_checkins;
+    let old_checkins = new_checkins.split_off(split_point);
+    let new_checkins = new_checkins;
+
+    let avg_response_time = avg_response_time_for_checkins(&new_checkins);
+
+    let response_time_change = calculate_response_time_change(&old_checkins, avg_response_time);
+
+    let avg_response_time = format!("{:.1} ms", avg_response_time);
+
+    let succesful_percent = success_percent_for_checkins(&new_checkins);
+    let successful_percent_change =
+        calculate_percentile_change(old_checkins, &new_checkins, succesful_percent);
+    let succesful_percent = format!("{:.1}%", succesful_percent);
+
+    let mut checkins_for_graph = new_checkins.clone();
+
     checkins_for_graph.reverse();
     let graph = SampledCheckinGraph {
         checkins: checkins_for_graph,
         number_of_chunks: 20,
     };
 
-    html! { (graph) }.0
+    html! {
+       dl."mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" {
+           (
+           single_stat("# of Checkins", new_checkins.len(), None, "fa-file")
+           )
+           (
+           single_stat("Avg. Response Time", avg_response_time, response_time_change, "fa-clock")
+           )
+           (
+           single_stat("Success Rate", succesful_percent, successful_percent_change, "fa-check")
+           )
+       }
+
+       div class="graph" {
+        (graph)
+       }
+    }
+    .0
 }
 
 struct CheckinTable(Vec<Checkin>);

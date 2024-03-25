@@ -67,8 +67,8 @@ pub fn routes() -> Router<AppState> {
             get(current_user::pages::show),
         )
         .route(
-            "/my/sites/:site_id/pages/:page_id/graph",
-            get(current_user::pages::graph),
+            "/my/sites/:site_id/pages/:page_id/refresh",
+            get(current_user::pages::refresh),
         )
 }
 
