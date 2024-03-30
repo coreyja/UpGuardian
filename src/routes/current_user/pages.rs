@@ -152,6 +152,7 @@ pub async fn show(
     let graph = SampledCheckinGraph {
         checkins: checkins_for_graph,
         number_of_chunks: 20,
+        range: Some(chrono::Utc::now() - recent_duration..chrono::Utc::now()),
     };
 
     html! {
@@ -266,6 +267,7 @@ pub async fn refresh(
     let graph = SampledCheckinGraph {
         checkins: checkins_for_graph,
         number_of_chunks: 20,
+        range: Some(chrono::Utc::now() - recent_duration..chrono::Utc::now()),
     };
 
     html! {
@@ -323,11 +325,13 @@ pub struct Checkin {
 
 struct SimpleCheckinGraph {
     checkins: Vec<Checkin>,
+    range: Option<std::ops::Range<DateTime<Utc>>>,
 }
 
 struct SampledCheckinGraph {
     checkins: Vec<Checkin>,
     number_of_chunks: usize,
+    range: Option<std::ops::Range<DateTime<Utc>>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -341,6 +345,12 @@ struct YAxisLine {
     width: usize,
     y_pos: usize,
     label: String,
+}
+
+struct XAxisTicks {
+    width: usize,
+    x_range: std::ops::Range<DateTime<Utc>>,
+    number_of_ticks: usize,
 }
 
 struct SvgPath {
@@ -499,6 +509,49 @@ impl Render for YAxisLine {
     }
 }
 
+impl Render for XAxisTicks {
+    fn render(&self) -> maud::Markup {
+        let Self {
+            width,
+            x_range,
+            number_of_ticks,
+        } = self;
+
+        let tick_width = *width as f64 / *number_of_ticks as f64;
+
+        let ticks = (0..=*number_of_ticks)
+            .map(|i| {
+                let x = i as f64 * tick_width;
+                let time = x_range.start.timestamp() as f64
+                    + (x / *width as f64) * (x_range.end - x_range.start).num_seconds() as f64;
+                let time = chrono::DateTime::<Utc>::from_timestamp(time as i64, 0).unwrap();
+                let label = time.format("%D %H:%M");
+
+                html! {
+                  g {
+                    (SvgPath {
+                      points: vec![
+                        (x, 90.0),
+                        (x, 95.0),
+                      ],
+                      stroke_width: 0.25,
+                      stroke_dashed: false,
+                      path_class: "stroke-blue-500".to_string(),
+                    })
+                    text x=(x) y=(100) font-size="3" fill="blue" { (label) }
+                  }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        maud::html! {
+            @for tick in ticks {
+                (tick)
+            }
+        }
+    }
+}
+
 trait ToFloat {
     fn to_f64(&self) -> f64;
 }
@@ -556,8 +609,16 @@ impl Render for SimpleCheckinGraph {
         let width = 200;
         let height = full_height - height_padding * 2;
 
-        let min_time = self.checkins.iter().map(|p| p.created_at).min().unwrap();
-        let max_time = self.checkins.iter().map(|p| p.created_at).max().unwrap();
+        let (min_time, max_time) = self
+            .range
+            .as_ref()
+            .map(|r| (r.start, r.end))
+            .unwrap_or_else(|| {
+                (
+                    self.checkins.iter().map(|p| p.created_at).min().unwrap(),
+                    self.checkins.iter().map(|p| p.created_at).max().unwrap(),
+                )
+            });
 
         let x_range = min_time..max_time;
 
@@ -612,6 +673,8 @@ impl Render for SimpleCheckinGraph {
         html! {
           svg class="w-full" viewBox="0 0 200 100" {
 
+            (XAxisTicks { width, x_range, number_of_ticks: 5 })
+
             (YAxisLine { width, y_pos: height_padding, label: format!("Max: {max_label}")})
 
             (YAxisLine { width, y_pos: full_height - height_padding, label: format!("Min: {min_label}")})
@@ -658,8 +721,16 @@ impl Render for SampledCheckinGraph {
         let width = 200;
         let height = full_height - height_padding * 2;
 
-        let min_time = self.checkins.iter().map(|p| p.created_at).min().unwrap();
-        let max_time = self.checkins.iter().map(|p| p.created_at).max().unwrap();
+        let (min_time, max_time) = self
+            .range
+            .as_ref()
+            .map(|r| (r.start, r.end))
+            .unwrap_or_else(|| {
+                (
+                    self.checkins.iter().map(|p| p.created_at).min().unwrap(),
+                    self.checkins.iter().map(|p| p.created_at).max().unwrap(),
+                )
+            });
 
         let x_range = min_time..max_time;
 
@@ -737,6 +808,8 @@ impl Render for SampledCheckinGraph {
 
         html! {
           svg class="w-full" viewBox="0 0 200 100" {
+
+            (XAxisTicks { width, x_range, number_of_ticks: 5 })
 
             (YAxisLine { width, y_pos: height_padding, label: format!("Max: {max_label}")})
 
