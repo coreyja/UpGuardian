@@ -54,6 +54,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/my/sites/new", get(current_user::sites::new))
         .route("/my/sites/:site_id", get(current_user::sites::show))
+        .route("/my/sites/:site_id/refresh", get(current_user::sites::refresh))
         .route(
             "/my/sites/:site_id/pages/new",
             get(current_user::pages::new),

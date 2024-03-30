@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use axum::{
-    extract::{FromRequestParts, Path, State},
+    extract::{FromRequestParts, Path, Query, State},
     http::request::Parts,
     response::{IntoResponse, Redirect},
     Form,
@@ -292,7 +292,19 @@ pub async fn show(site: Site, State(state): State<AppState>, session: DBSession)
 
       a href=(format!("https://{}", site.domain)) rel="noopener" { "Visit Site" }
 
-      (site_stats_overview(&site, &pages, &state).await)
+      form action=(format!("/my/sites/{}/refresh", site.site_id)) method="get" data-target=".refresh" data-app="LiveForm" {
+        select name="days" {
+          option value="3" { "3 days" }
+          option value="7" { "7 days" }
+          option value="14" { "14 days" }
+          option value="30" selected { "30 days" }
+          option value="90" { "90 days" }
+        }
+
+        div class="refresh" {
+          (site_stats_overview(&site, &pages, &state, chrono::Duration::days(31)).await)
+        }
+      }
 
       h2 { "Pages" }
 
@@ -311,6 +323,40 @@ pub async fn show(site: Site, State(state): State<AppState>, session: DBSession)
     .into_template(state, Some(session))
     .await
     .unwrap()
+}
+
+#[derive(serde::Deserialize)]
+pub struct RefreshQuery {
+    days: i32,
+}
+
+pub async fn refresh(
+    Query(RefreshQuery { days }): Query<RefreshQuery>,
+    site: Site,
+    State(state): State<AppState>,
+    session: DBSession,
+) -> impl IntoResponse {
+    let pages = sqlx::query_as!(
+        Page,
+        r#"
+      SELECT Pages.*
+      FROM Pages
+      JOIN Sites ON Sites.site_id = Pages.site_id
+      WHERE Pages.site_id = $1 AND Sites.user_id = $2
+    "#,
+        site.site_id,
+        session.user_id
+    )
+    .fetch_all(state.db())
+    .await
+    .unwrap();
+
+    let duration = chrono::Duration::days(days as i64);
+
+    html! {
+      (site_stats_overview(&site, &pages, &state, duration).await)
+    }
+    .0
 }
 
 pub struct Change {
@@ -424,10 +470,13 @@ pub fn chrono_to_pg_interval(duration: Duration) -> PgInterval {
     std.try_into().unwrap()
 }
 
-async fn site_stats_overview(site: &Site, pages: &[Page], state: &AppState) -> maud::Markup {
+async fn site_stats_overview(
+    site: &Site,
+    pages: &[Page],
+    state: &AppState,
+    recent_duration: chrono::Duration,
+) -> maud::Markup {
     let pages_tracked = pages.len();
-
-    let recent_duration = chrono::Duration::days(30);
 
     let all_interval = chrono_to_pg_interval(recent_duration * 2);
     let all_checkins = sqlx::query_as!(
@@ -467,22 +516,16 @@ async fn site_stats_overview(site: &Site, pages: &[Page], state: &AppState) -> m
     let succesful_percent = format!("{:.1}%", succesful_percent);
 
     html! {
-        div {
-            h3."text-base font-semibold leading-6 text-gray-900" {
-                "Last 30 days"
-            }
-            (new_checkins.len())
-            dl."mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" {
-                (
-                  single_stat("Pages Tracked", pages_tracked, None, "fa-file")
-                )
-                (
-                  single_stat("Avg. Response Time", avg_response_time, response_time_change, "fa-clock")
-                )
-                (
-                  single_stat("Success Rate", succesful_percent, successful_percent_change, "fa-check")
-                )
-            }
+        dl."mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" {
+            (
+                single_stat("Pages Tracked", pages_tracked, None, "fa-file")
+            )
+            (
+                single_stat("Avg. Response Time", avg_response_time, response_time_change, "fa-clock")
+            )
+            (
+                single_stat("Success Rate", succesful_percent, successful_percent_change, "fa-check")
+            )
         }
     }
 }
