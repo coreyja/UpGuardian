@@ -721,16 +721,14 @@ impl Render for SampledCheckinGraph {
         let width = 200;
         let height = full_height - height_padding * 2;
 
+        let checkin_min = self.checkins.iter().map(|p| p.created_at).min().unwrap();
+        let checkin_max = self.checkins.iter().map(|p| p.created_at).max().unwrap();
+
         let (min_time, max_time) = self
             .range
             .as_ref()
-            .map(|r| (r.start, r.end))
-            .unwrap_or_else(|| {
-                (
-                    self.checkins.iter().map(|p| p.created_at).min().unwrap(),
-                    self.checkins.iter().map(|p| p.created_at).max().unwrap(),
-                )
-            });
+            .map(|r| (checkin_min.min(r.start), checkin_max.max(r.end)))
+            .unwrap_or_else(|| (checkin_min, checkin_max));
 
         let x_range = min_time..max_time;
 
