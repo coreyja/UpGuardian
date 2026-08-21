@@ -89,10 +89,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
+        # Pinned, not `@latest`: pnpm 11 requires Node >= 22.13, so `@latest`
+        # silently broke this job against the old Node 20 pin the moment pnpm
+        # 11 shipped. A floating package manager plus a pinned runtime always
+        # ends here eventually.
+        run: corepack enable && corepack prepare pnpm@11.22.0 --activate
 
       - name: Build Tailwind CSS
         run: |
